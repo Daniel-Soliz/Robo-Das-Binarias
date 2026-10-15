@@ -17,7 +17,7 @@ def test_normalizacao_e_fechamento():
         teste_dado(1000), teste_dado(700),
         teste_dado(1000, close=1.095), teste_dado(1300, max=0.5)
     ]
-    velas = converter_candles_api(dados, "M5", agora=1500)
+    velas = converter_candles_api(dados, "M5", agora=1250)
     assert len(velas) == 2
     assert velas[0].instante.timestamp() == 700
     assert velas[1].fechamento == 1.095
