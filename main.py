@@ -6,6 +6,7 @@ import argparse
 import logging
 import time
 
+from analysis.session import SessaoAnalise
 from config import carregar_configuracao, salvar_configuracao
 from data_sources.base import Amostra
 from utils.logger import configurar_logs
@@ -45,14 +46,18 @@ def executar() -> int:
         LOG.error("Não foi possível inicializar: %s", erro)
         return 1
 
-    anterior: tuple[str, str, str, str] | None = None
+    sessao = SessaoAnalise(configuracao.pontuacao_minima)
+    anterior: tuple[str, ...] | None = None
     ultima_exibicao = 0.0
 
     def mostrar(amostra: Amostra) -> None:
         nonlocal anterior, ultima_exibicao
+        diagnostico = sessao.receber(amostra)
         atual = (
             amostra.ativo or "—", amostra.timeframe or "—",
-            amostra.estado.value, amostra.mensagem
+            amostra.estado.value, amostra.mensagem,
+            diagnostico.estado, str(diagnostico.pontuacao),
+            diagnostico.direcao_teorica or "—",
         )
         instante = time.monotonic()
         # Imprime alterações imediatamente e amostras idênticas no máximo a cada 5 s.
@@ -63,6 +68,12 @@ def executar() -> int:
             "%s | %s | %s | %d velas | %.1f FPS | %s",
             atual[0], atual[1], atual[2], len(amostra.candles),
             amostra.fps, amostra.mensagem,
+        )
+        LOG.info(
+            "[DIAGNÓSTICO SEM ALERTAS] %s | confluência %d/100 | hipótese: %s | %s",
+            diagnostico.estado, diagnostico.pontuacao,
+            diagnostico.direcao_teorica or "nenhuma",
+            "; ".join(diagnostico.motivos[:3]),
         )
 
     LOG.info("Modo %s iniciado. Apenas leitura; Ctrl+C para encerrar.", configuracao.modo)

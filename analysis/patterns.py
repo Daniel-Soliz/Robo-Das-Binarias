@@ -59,10 +59,9 @@ def detectar_padroes(candles: Sequence[Candle]) -> tuple[Padrao, ...]:
         if inf >= max(b * 2, faixa * 0.5) and sup <= faixa * 0.2:
             adicionar("martelo", "COMPRA", 1)
             adicionar("pin bar de alta", "COMPRA", 1)
-            if len(velas) >= 4 and velas[-4].fechamento > velas[-2].fechamento:
-                adicionar("enforcado", "VENDA", 1) if (
-                    velas[-4].fechamento < velas[-2].fechamento
-                ) else None
+            # Enforcado: forma de martelo após tendência de alta.
+            if len(velas) >= 4 and velas[-4].fechamento < velas[-2].fechamento:
+                adicionar("enforcado", "VENDA", 1)
         if sup >= max(b * 2, faixa * 0.5) and inf <= faixa * 0.2:
             adicionar("martelo invertido", "COMPRA", 1)
             adicionar("estrela cadente", "VENDA", 1)

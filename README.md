@@ -1,6 +1,6 @@
-# Robô das Binárias — assistente de leitura (Etapa 2)
+# Robô das Binárias — análise técnica em diagnóstico (Etapa 3)
 
-Aplicação Python para **observar gráficos** de Forex na IQ Option. O objetivo final é emitir alertas de decisão manual; a **Etapa 2 apenas captura e valida dados**, ainda sem sinais. O software **não executa operações, não clica na plataforma, não movimenta dinheiro e não envia ordens**. Ativos identificados como OTC são ignorados.
+Aplicação Python para **observar gráficos** de Forex na IQ Option. O objetivo final é emitir alertas de decisão manual; as Etapas 2 e 3 capturam dados e calculam confluência teórica, ainda sem alertas operacionais. O software **não executa operações, não clica na plataforma, não movimenta dinheiro e não envia ordens**. Ativos identificados como OTC são ignorados.
 
 ## Instalação — Windows 10/11
 
@@ -59,3 +59,28 @@ A suíte cobre contrato/configuração, regra OTC, identificação OCR por texto
 - A captura não realiza cliques, digitação ou comandos na IQ Option.
 - OCR incerto, OTC e histórico insuficiente não produzem recomendações.
 - Opções binárias e digitais apresentam alto risco de perda. Nenhuma ferramenta garante acertos ou rentabilidade.
+
+## Etapa 3 — motor de análise M5/M15 (somente diagnóstico)
+
+Implementações na pasta analysis/:
+- indicators.py: EMA 9/21/50 e RSI 14 de Wilder; aquecimento explícito.
+- patterns.py: engolfos, haramis, martelos, enforcado, doji, pin bars, estrelas e três soldados/corvos.
+- levels.py: pivôs confirmados, zonas de reação e quantidade de toques.
+- trendlines.py: LTA/LTB com inclinação, contatos, toque, rompimento ou reteste.
+- signal_engine.py: pontuação M15 (25), zona (20), padrão (20), linha (15), EMA (10), RSI (10).
+- session.py: agrupa M5/M15 do mesmo ativo e da mesma fonte sem misturar mercados.
+
+### Sinais operacionais desabilitados
+
+Não existe comando ou opção de configuração capaz de habilitar sinais reais nesta etapa.
+O resultado operacional é sempre False, validade_segundos sempre 0, sem alerta sonoro, clique, compra, venda ou envio de ordens.
+Se todos os filtros forem satisfeitos, o terminal pode exibir apenas CANDIDATO TEÓRICO — NÃO OPERACIONAL.
+Os dados extraídos pela tela têm valores normalizados, sem preço e tempo histórico confiáveis: o Modo A permanece AGUARDAR.
+A API comunitária é não oficial e pode atrasar; seu diagnóstico nunca representa autorização de entrada.
+A nota 100/100 representa confluência, NÃO probabilidade medida de acerto.
+
+### Testar
+
+Execute python -m pytest -q. São testados indicadores, padrões, zonas, tendência, pontuação e bloqueios.
+Para personalizar a pontuação altere pontuacao_minima no config.json (50–100; padrão 75). Isso não libera sinais.
+A leitura real em Windows e sua consistência ainda exigem validação presencial; a expiração de um minuto ainda não foi validada.

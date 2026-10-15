@@ -40,7 +40,8 @@ class Configuracao:
     captura_fps: float = 3.0
     ocr_intervalo_segundos: float = 1.5
     timeframes_permitidos: tuple[str, ...] = ("M5", "M15")
-    minimo_candles: int = 50
+    minimo_candles: int = 60
+    pontuacao_minima: int = 75
     api_ativo: str = "EURUSD"
     api_intervalo_segundos: float = 10.0
     regiao_grafico: Regiao | None = None
@@ -56,6 +57,8 @@ class Configuracao:
             raise ValueError("Intervalo de OCR inválido.")
         if not 3 <= self.minimo_candles <= 500:
             raise ValueError("Quantidade mínima de candles inválida.")
+        if not 50 <= self.pontuacao_minima <= 100:
+            raise ValueError("Pontuação mínima fora de 50 a 100.")
         if not 3 <= self.api_intervalo_segundos <= 3600:
             raise ValueError("Intervalo da API inválido.")
         if any(valor not in ("M5", "M15") for valor in self.timeframes_permitidos):
