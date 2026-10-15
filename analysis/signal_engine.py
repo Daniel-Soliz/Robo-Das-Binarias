@@ -159,7 +159,7 @@ class MotorAnalise:
         linhas = detectar_linhas(m5)
         linha_ok = any(
             linha.tipo == ("LTA" if direcao == "COMPRA" else "LTB")
-            and linha.evento in ("toque", "reteste")
+            and linha.evento == "toque"
             and linha.toques >= 2
             for linha in linhas
         )

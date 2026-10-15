@@ -81,17 +81,23 @@ def detectar_linhas(
             if tipo == "LTA":
                 if anterior_candle.fechamento >= previa - tolerancia and atual.fechamento < projecao - tolerancia:
                     evento = "rompimento"
+                elif (anterior_candle.fechamento < previa - tolerancia
+                      and atual.maxima >= projecao - tolerancia
+                      and atual.fechamento < projecao - tolerancia):
+                    # Reteste da linha ROMPIDA, por baixo; não é gatilho de compra.
+                    evento = "reteste"
                 elif abs(atual.minima - projecao) <= tolerancia and atual.fechamento >= projecao:
                     evento = "toque"
-                elif atual.minima <= projecao and atual.fechamento > projecao + tolerancia:
-                    evento = "reteste"
             else:
                 if anterior_candle.fechamento <= previa + tolerancia and atual.fechamento > projecao + tolerancia:
                     evento = "rompimento"
+                elif (anterior_candle.fechamento > previa + tolerancia
+                      and atual.minima <= projecao + tolerancia
+                      and atual.fechamento > projecao + tolerancia):
+                    # Reteste da linha ROMPIDA, por cima; não é gatilho de venda.
+                    evento = "reteste"
                 elif abs(atual.maxima - projecao) <= tolerancia and atual.fechamento <= projecao:
                     evento = "toque"
-                elif atual.maxima >= projecao and atual.fechamento < projecao - tolerancia:
-                    evento = "reteste"
             possiveis.append(
                 LinhaTendencia(
                     tipo=tipo, primeiro_indice=anterior.indice,
