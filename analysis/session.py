@@ -2,6 +2,9 @@
 
 from __future__ import annotations
 
+from datetime import datetime
+
+from analysis.cooldown import CooldownCandidatos
 from data_sources.base import Amostra, EstadoFonte
 from analysis.signal_engine import Analise, MotorAnalise
 
@@ -9,8 +12,9 @@ from analysis.signal_engine import Analise, MotorAnalise
 class SessaoAnalise:
     """Não combina ativos diferentes, OTC ou fontes sem preço verificável."""
 
-    def __init__(self, pontuacao_minima: int = 75):
+    def __init__(self, pontuacao_minima: int = 75, cooldown_segundos: int = 180):
         self.motor = MotorAnalise(pontuacao_minima)
+        self.cooldown = CooldownCandidatos(cooldown_segundos)
         self._ativo: str | None = None
         self._origem: str | None = None
         self._series: dict[str, tuple] = {}
@@ -36,7 +40,15 @@ class SessaoAnalise:
         self._series[amostra.timeframe] = amostra.candles
         if "M5" not in self._series or "M15" not in self._series:
             return Analise(estado="AGUARDAR", motivos=("Aguardando M5 e M15 completos.",))
-        return self.motor.analisar(
+        resultado = self.motor.analisar(
             amostra.ativo, self._series["M5"], self._series["M15"],
             agora=amostra.instante_coleta
         )
+        if resultado.direcao_teorica and not self.cooldown.permitir(
+            amostra.ativo, resultado.direcao_teorica, amostra.instante_coleta
+        ):
+            return Analise(
+                estado="AGUARDAR", pontuacao=resultado.pontuacao,
+                motivos=("Cooldown de candidato teórico ativo.",),
+            )
+        return resultado

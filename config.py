@@ -42,6 +42,7 @@ class Configuracao:
     timeframes_permitidos: tuple[str, ...] = ("M5", "M15")
     minimo_candles: int = 60
     pontuacao_minima: int = 75
+    cooldown_segundos: int = 180
     api_ativo: str = "EURUSD"
     api_intervalo_segundos: float = 10.0
     regiao_grafico: Regiao | None = None
@@ -59,6 +60,8 @@ class Configuracao:
             raise ValueError("Quantidade mínima de candles inválida.")
         if not 50 <= self.pontuacao_minima <= 100:
             raise ValueError("Pontuação mínima fora de 50 a 100.")
+        if not 60 <= self.cooldown_segundos <= 3600:
+            raise ValueError("Cooldown deve ficar entre 60 e 3600 segundos.")
         if not 3 <= self.api_intervalo_segundos <= 3600:
             raise ValueError("Intervalo da API inválido.")
         if any(valor not in ("M5", "M15") for valor in self.timeframes_permitidos):

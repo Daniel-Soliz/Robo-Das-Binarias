@@ -46,7 +46,7 @@ def executar() -> int:
         LOG.error("Não foi possível inicializar: %s", erro)
         return 1
 
-    sessao = SessaoAnalise(configuracao.pontuacao_minima)
+    sessao = SessaoAnalise(configuracao.pontuacao_minima, configuracao.cooldown_segundos)
     anterior: tuple[str, ...] | None = None
     ultima_exibicao = 0.0
 

@@ -84,3 +84,5 @@ A nota 100/100 representa confluência, NÃO probabilidade medida de acerto.
 Execute python -m pytest -q. São testados indicadores, padrões, zonas, tendência, pontuação e bloqueios.
 Para personalizar a pontuação altere pontuacao_minima no config.json (50–100; padrão 75). Isso não libera sinais.
 A leitura real em Windows e sua consistência ainda exigem validação presencial; a expiração de um minuto ainda não foi validada.
+
+O cooldown diagnóstico configurável (padrão 180 segundos) evita repetir hipóteses do mesmo ativo e direção, sem habilitar alertas de entrada.

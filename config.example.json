@@ -5,6 +5,7 @@
   "timeframes_permitidos": ["M5", "M15"],
   "minimo_candles": 60,
   "pontuacao_minima": 75,
+  "cooldown_segundos": 180,
   "api_ativo": "EURUSD",
   "api_intervalo_segundos": 10.0,
   "regiao_grafico": null,
