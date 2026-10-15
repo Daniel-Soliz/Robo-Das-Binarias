@@ -1,0 +1,24 @@
+# Credenciais e configuração local
+.env
+.env.*
+!.env.example
+config.json
+# Registros e capturas privadas
+logs/
+capturas/
+capturas_debug/
+*.csv
+*.log
+# Python / IDE
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.venv/
+venv/
+.idea/
+.vscode/
+build/
+dist/
+*.egg-info/
