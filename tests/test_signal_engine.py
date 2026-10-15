@@ -16,7 +16,7 @@ def series(timeframe, n=70, tendencia=.0002, real=True, offset=0):
     inicio = AGORA - timedelta(seconds=periodo * (n + 1))
     saida = []
     for i in range(n):
-        centro = 1.1 + (i + offset) * tendencia
+        centro = (0.5 if not real else 1.1) + (i + offset) * tendencia
         saida.append(Candle(
             instante=inicio + timedelta(seconds=periodo * i) if real else None,
             abertura=centro-.0001, maxima=centro+.00025,
