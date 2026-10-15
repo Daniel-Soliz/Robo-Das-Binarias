@@ -22,3 +22,11 @@ venv/
 build/
 dist/
 *.egg-info/
+
+# Evitar publicação acidental de imagens capturadas da tela
+*.png
+*.jpg
+*.jpeg
+*.webp
+*.bmp
+*.tiff
