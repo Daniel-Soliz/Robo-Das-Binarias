@@ -3,7 +3,7 @@
 from data_sources.api_source import converter_candles_api
 
 
-def teste_dado(inicio, **alteracoes):
+def criar_dado(inicio, **alteracoes):
     item = {
         "from": inicio, "open": 1.08, "max": 1.1,
         "min": 1.07, "close": 1.09,
@@ -14,8 +14,8 @@ def teste_dado(inicio, **alteracoes):
 
 def test_normalizacao_e_fechamento():
     dados = [
-        teste_dado(1000), teste_dado(700),
-        teste_dado(1000, close=1.095), teste_dado(1300, max=0.5)
+        criar_dado(1000), criar_dado(700),
+        criar_dado(1000, close=1.095), criar_dado(1300, max=0.5)
     ]
     velas = converter_candles_api(dados, "M5", agora=1250)
     assert len(velas) == 2
@@ -27,4 +27,4 @@ def test_normalizacao_e_fechamento():
 
 
 def test_api_nao_aceita_preco_impossivel():
-    assert converter_candles_api([teste_dado(1000, min=1.2)], "M5", 1500) == ()
+    assert converter_candles_api([criar_dado(1000, min=1.2)], "M5", 1500) == ()
