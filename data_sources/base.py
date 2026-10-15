@@ -20,9 +20,9 @@ class EstadoFonte(str, Enum):
 
 @dataclass(frozen=True)
 class Candle:
-    """OHLC normalizado ou de preço real; nunca confundir as duas escalas."""
+    """OHLC normalizado ou de preço real; sem inventar tempo da vela."""
 
-    instante: datetime
+    instante: datetime | None
     abertura: float
     maxima: float
     minima: float
@@ -42,6 +42,8 @@ class Candle:
             raise ValueError("Mínima inconsistente.")
         if not self.preco_real and not all(0 <= valor <= 1 for valor in valores):
             raise ValueError("Preço normalizado deve estar entre 0 e 1.")
+        if self.preco_real and self.instante is None:
+            raise ValueError("Candles de preço real exigem timestamp.")
 
 
 @dataclass(frozen=True)
@@ -56,7 +58,6 @@ class Amostra:
     fps: float = 0.0
     preco_real: bool = False
     instante_coleta: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
-    # Quando True, a identidade do ativo/timeframe foi validada pela origem.
     identificacao_confiavel: bool = False
 
 
