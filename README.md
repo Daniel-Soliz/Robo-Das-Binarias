@@ -2,16 +2,22 @@
 
 Aplicativo desktop local em português para estudar **rompimento e reteste**. Importa CSV, mostra candles e regiões, reproduz cronologicamente, explica eventos, simula e exporta resultados. **Não envia ordens nem conecta à corretora.**
 
-## Começar no Windows 10/11 x64
+## Baixar e instalar no Windows 10/11 (64 bits)
 
-1. Abra a aba **Actions** deste repositório, execução **DS Trader - testes e Windows** do commit desejado.
-2. Somente se o trabalho `windows` estiver verde, baixe o artifact **DS-Trader-Windows-x64**. Pode ser necessário entrar no GitHub.
-3. Extraia o artifact e depois `DS-Trader-Windows-x64.zip` por completo.
-4. **Portátil:** abra `DS-Trader/DS-Trader.exe`, mantendo `_internal` ao lado.
-5. **Instalação simples opcional:** execute `Instalar.cmd`. Copia o aplicativo para sua pasta de usuário e cria atalho na Área de Trabalho, sem administrador. Não é instalador MSI/EXE assinado.
-6. No aplicativo clique **Exemplo sintético → Iniciar / continuar**. Veja **Sinais e histórico** e **Resultados**; exporte JSON + CSV.
+**Página de download:** https://daniel-soliz.github.io/Robo-Das-Binarias/
 
-Não há binário verificado até o build/teste Windows completar. O pacote não possui assinatura digital. Não desative proteções do Windows para executá-lo. Consulte [testes e limitações](docs/TESTES.md).
+1. Abra a página e clique em **Baixar instalador**, quando a compilação estiver disponível.
+2. Execute **DS-Trader-Setup.exe**, siga o assistente em português e clique em **Concluir**.
+3. O instalador cria **DS Trader** na Área de Trabalho e no Menu Iniciar. Depois basta abrir o atalho.
+4. Na primeira execução, selecione **Exemplo sintético** e **Iniciar / continuar** para conhecer o programa.
+
+A instalação é feita na pasta do usuário, sem exigir Python nem privilégios de administrador. Inclui desinstalador acessível pelo Windows. O histórico dos estudos é mantido separadamente em `%LOCALAPPDATA%\DS Trader`; desinstalar não exclui automaticamente o histórico.
+
+**Versão portátil opcional:** na mesma página, o link de ZIP só aparece quando houver pacote confirmado. Extraia o ZIP completo e abra `DS-Trader/DS-Trader.exe`. Não separe a pasta `_internal` do executável.
+
+A página consulta os assets da última release pública e **não mostra um botão de download fictício**. O workflow `.github/workflows/testes.yml` testa o motor, empacota, executa teste real de interface no Windows, instala silenciosamente e verifica atalho e execução antes de publicar `DS-Trader-Setup.exe` na release `v1.0.0`. Se a compilação falhar, a página aponta para o estado dos testes, sem oferecer um arquivo inexistente.
+
+O executável e o instalador **não possuem assinatura digital**. O Windows pode exibir avisos; não desative o Defender ou outras proteções para executar o programa. Os testes automatizados usam Windows Server 2022 e não substituem um teste manual no Windows 10/11 pessoal.
 
 ## Executar a partir do código
 
@@ -34,7 +40,7 @@ python -m pip install pip==24.3.1
 powershell -NoProfile -ExecutionPolicy Bypass -File scripts/build.ps1
 ```
 
-Dependências do build e suas versões estão em `requirements-build.txt`. O script executa testes, empacota com PyInstaller 6.11.1, abre o executável e testa gráfico, simulação, gravação e exportação. Saída: `DS-Trader-Windows-x64.zip` e SHA256. A compilação é feita em Windows; não se renomeiam arquivos para `.exe`. Não prometemos build bit a bit idêntico: imagem Windows, pip e artefatos upstream podem mudar.
+Dependências do build e suas versões estão em `requirements-build.txt`. O script executa testes, empacota com PyInstaller 6.11.1, abre o executável e testa gráfico, simulação, gravação e exportação. Saída: `release-build/DS-Trader-Setup.exe`, `DS-Trader-Windows-x64.zip` e respectivos SHA256. A compilação do assistente usa Inno Setup 6 (versão 6.4.3 no fallback do CI). A compilação é feita em Windows; não se renomeiam arquivos para `.exe`. Não prometemos build bit a bit idêntico: imagem Windows, pip e artefatos upstream podem mudar.
 
 ## Dados
 
