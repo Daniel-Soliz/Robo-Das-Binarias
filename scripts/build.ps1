@@ -2,6 +2,7 @@
 $ErrorActionPreference = 'Stop'
 Set-Location (Join-Path $PSScriptRoot '..')
 
+try {
 python -m pip install -r requirements-build.txt
 if ($LASTEXITCODE -ne 0) { throw 'Falha ao instalar dependencias de build' }
 python -m unittest discover -s tests_ds -v
@@ -34,14 +35,29 @@ $portableHash = (Get-FileHash DS-Trader-Windows-x64.zip -Algorithm SHA256).Hash.
 "$portableHash  DS-Trader-Windows-x64.zip" | Set-Content DS-Trader-Windows-x64.sha256.txt -Encoding Ascii
 
 # Inno Setup cria o assistente tradicional, desinstalador e atalho do desktop.
-$iscc = Join-Path ${env:ProgramFiles(x86)} 'Inno Setup 6\ISCC.exe'
-if (!(Test-Path $iscc)) {
-    choco install innosetup --version=6.4.3 --yes --no-progress
-    if ($LASTEXITCODE -ne 0) { throw 'Falha ao instalar Inno Setup 6.4.3' }
+$candidateDirs = @()
+if (${env:ProgramFiles(x86)}) { $candidateDirs += (Join-Path ${env:ProgramFiles(x86)} 'Inno Setup 6') }
+if ($env:ProgramFiles) { $candidateDirs += (Join-Path $env:ProgramFiles 'Inno Setup 6') }
+$command = Get-Command ISCC.exe -ErrorAction SilentlyContinue
+$iscc = if ($command) { $command.Source } else { $null }
+foreach ($dir in $candidateDirs) {
+    $found = Join-Path $dir 'ISCC.exe'
+    if (Test-Path $found) { $iscc = $found; break }
 }
-if (!(Test-Path $iscc)) { throw "Compilador Inno Setup nao encontrado: $iscc" }
-& $iscc 'scripts/DS-Trader.iss'
-if ($LASTEXITCODE -ne 0) { throw 'Erro ao gerar instalador Inno Setup' }
+if (!$iscc) {
+    Write-Host 'Instalando compilador Inno Setup...'
+    choco install innosetup --version=6.4.3 --yes --no-progress
+    if ($LASTEXITCODE -ne 0) { throw 'Falha ao instalar Inno Setup 6.4.3. Consulte logs do Chocolatey.' }
+    foreach ($dir in $candidateDirs) {
+        $found = Join-Path $dir 'ISCC.exe'
+        if (Test-Path $found) { $iscc = $found; break }
+    }
+}
+if (!$iscc) { throw 'Compilador ISCC.exe ausente; nao e seguro oferecer instalador.' }
+$outdir = (Join-Path (Get-Location).Path 'release-build')
+New-Item -ItemType Directory -Force -Path $outdir | Out-Null
+& $iscc "/O$outdir" (Join-Path (Get-Location).Path 'scripts/DS-Trader.iss')
+if ($LASTEXITCODE -ne 0) { throw "Erro ao compilar instalador Inno Setup (codigo $LASTEXITCODE)" }
 $installer = (Resolve-Path 'release-build/DS-Trader-Setup.exe').Path
 
 # Validacao do fluxo que o usuario vera: instalar, atalho e iniciar o instalado.
@@ -59,3 +75,10 @@ Copy-Item smoke-result.json release-build/smoke-result.json -Force
 $installerHash = (Get-FileHash $installer -Algorithm SHA256).Hash.ToLowerInvariant()
 "$installerHash  DS-Trader-Setup.exe" | Set-Content DS-Trader-Setup.sha256.txt -Encoding Ascii
 Write-Host 'BUILD CONCLUIDO: DS-Trader-Setup.exe + pacote portatil + SHA256'
+
+} catch {
+    $details = ($_ | Out-String) + [Environment]::NewLine + $_.ScriptStackTrace
+    $details | Set-Content -Path build-error.txt -Encoding UTF8
+    Write-Error "BUILD FALHOU. Detalhes gravados em build-error.txt: $details" -ErrorAction Continue
+    exit 1
+}
