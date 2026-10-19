@@ -1,10 +1,13 @@
-name: DS Trader - testes e Windows
+name: DS Trader - testes, instalador e Windows
 on:
   push:
     branches: [main]
   pull_request:
     branches: [main]
   workflow_dispatch:
+concurrency:
+  group: ds-trader-${{ github.ref }}
+  cancel-in-progress: true
 permissions:
   contents: read
 jobs:
@@ -40,19 +43,55 @@ jobs:
         with:
           python-version: '3.11.9'
           architecture: x64
-      - name: Construir e abrir aplicativo real
+      - name: Compilar aplicativo, instalador e testar o fluxo real
         shell: pwsh
         run: ./scripts/build.ps1
       - uses: actions/upload-artifact@v4
         with:
           name: DS-Trader-Windows-x64
           path: |
+            release-build/DS-Trader-Setup.exe
+            DS-Trader-Setup.sha256.txt
             DS-Trader-Windows-x64.zip
             DS-Trader-Windows-x64.sha256.txt
-            smoke-result.json
+            release-build/smoke-result.json
           if-no-files-found: error
       - uses: actions/upload-artifact@v4
         if: failure()
         with:
           name: diagnostico-windows
           path: smoke-error.txt
+  publicar:
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    needs: windows
+    runs-on: ubuntu-22.04
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: DS-Trader-Windows-x64
+          path: downloads
+      - name: Conferir integridade dos arquivos
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd downloads
+          test -s release-build/smoke-result.json
+          cp release-build/DS-Trader-Setup.exe ./DS-Trader-Setup.exe
+          sha256sum -c DS-Trader-Setup.sha256.txt
+          sha256sum -c DS-Trader-Windows-x64.sha256.txt
+      - name: Publicar instalador verificado em GitHub Releases
+        shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          set -euo pipefail
+          cd downloads
+          arquivos=(DS-Trader-Setup.exe DS-Trader-Setup.sha256.txt DS-Trader-Windows-x64.zip DS-Trader-Windows-x64.sha256.txt)
+          if gh release view v1.0.0 >/dev/null 2>&1; then
+            gh release upload v1.0.0 "${arquivos[@]}" --clobber
+          else
+            gh release create v1.0.0 "${arquivos[@]}" --target "$GITHUB_SHA" --title 'DS Trader 1.0.0 - Windows x64' --notes 'Instalador Windows com atalho na Área de Trabalho; pacote portátil opcional. Aplicativo local de análise e simulação; não envia ordens. Compilação e smoke test de GUI automatizados em Windows Server 2022. Sem assinatura digital; não desative proteções do Windows.'
+          fi
