@@ -1,0 +1,213 @@
+"""Monitoramento visual LOCAL da tela. Nao fornece preco, horario de mercado nem sinais de ordens."""
+from __future__ import annotations
+
+from dataclasses import dataclass
+from datetime import datetime, timezone
+from queue import Empty, Full, Queue
+import threading
+import time
+
+# Nao importar PIL/mss no modulo: CSV e testes funcionam sem captura.
+
+@dataclass(frozen=True)
+class Region:
+    left: int
+    top: int
+    width: int
+    height: int
+
+    def __post_init__(self):
+        if any(type(v) is not int for v in (self.left, self.top, self.width, self.height)):
+            raise ValueError("Coordenadas devem ser numeros inteiros")
+        if not (180 <= self.width <= 8000 and 120 <= self.height <= 5000):
+            raise ValueError("Selecione somente uma area do grafico (minimo 180x120)")
+
+    def mss_rect(self):
+        return dict(left=self.left, top=self.top, width=self.width, height=self.height)
+
+
+@dataclass(frozen=True)
+class VisualCandle:
+    x: int
+    high: float
+    low: float
+    open: float
+    close: float
+    direction: str
+
+
+@dataclass(frozen=True)
+class Assessment:
+    captured_at: str
+    detected: int
+    completed_estimate: int
+    movement: str
+    explanation: str
+    is_market_quote: bool = False
+    trading_signal: bool = False
+
+
+def detect_visual_candles(image):
+    """Heuristica sobre PIXELS HSV; nao converte coordenadas em preco ou OHLC de corretora.
+
+    Funciona apenas para paletas de velas verde/vermelho com corpos separados.
+    Nao reconhecer visualmente NAO e evidencia de mercado lateral.
+    """
+    if image.width < 180 or image.height < 120:
+        return ()
+    source = image.copy()
+    source.thumbnail((1200, 700))
+    hsv = source.convert("HSV")
+    px = hsv.load()
+    width, height = hsv.size
+    labels = []
+    # As cores de grade/cursos podem impedir deteccao. Resultado sempre aproximado.
+    for x in range(width):
+        up = down = 0
+        for y in range(4, height - 4, 2):
+            h, s, v = px[x, y]
+            if s < 92 or v < 78:
+                continue
+            if 51 <= h <= 124:
+                up += 1
+            elif h <= 11 or h >= 246:
+                down += 1
+        if up >= 3 and up >= 3 * down:
+            labels.append("ALTA")
+        elif down >= 3 and down >= 3 * up:
+            labels.append("BAIXA")
+        else:
+            labels.append(None)
+    groups = []
+    begin = 0
+    color = None
+    for x in range(width + 1):
+        next_color = labels[x] if x < width else None
+        if next_color != color:
+            if color is not None and x - begin >= 3:
+                groups.append((begin, x, color))
+            begin = x
+            color = next_color
+    candles = []
+    for a, b, direction in groups:
+        span = b - a
+        if span > max(18, int(width * .055)):
+            continue
+        rows = []
+        for y in range(4, height - 4):
+            count = 0
+            for x in range(a, b):
+                h, s, v = px[x, y]
+                if s >= 92 and v >= 78 and ((51 <= h <= 124) if direction == "ALTA" else (h <= 11 or h >= 246)):
+                    count += 1
+            rows.append(count)
+        colored = [i for i, n in enumerate(rows) if n > 0]
+        body = [i for i, n in enumerate(rows) if n >= max(2, int(span * .6))]
+        if len(colored) < 5 or len(body) < 2:
+            continue
+        top = min(body) + 4
+        bottom = max(body) + 4
+        high = 1.0 - (min(colored) + 4) / height
+        low = 1.0 - (max(colored) + 4) / height
+        if high < low or top >= bottom:
+            continue
+        open_ = 1.0 - (bottom if direction == "ALTA" else top) / height
+        close = 1.0 - (top if direction == "ALTA" else bottom) / height
+        candles.append(VisualCandle((a + b) // 2, high, low, open_, close, direction))
+    return tuple(candles)
+
+
+def assess(image, captured_at=None):
+    when = captured_at or datetime.now(timezone.utc).isoformat()
+    detected = detect_visual_candles(image)
+    # A vela mais a direita pode ainda estar em formacao: nunca trata-la como fechada.
+    completed = detected[:-1]
+    if len(completed) < 8:
+        movement = "Leitura insuficiente"
+        explanation = (
+            f"{len(detected)} possiveis velas coloridas reconhecidas. "
+            "Enquadre apenas a area dos candles, com fundo/cores visiveis. "
+            "Nao e possivel confirmar o movimento."
+        )
+    else:
+        recent = completed[-3:]
+        past = completed[-8:-5]
+        delta = sum(c.close for c in recent)/3 - sum(c.close for c in past)/3
+        if delta > .018:
+            movement = "Alta visual relativa"
+        elif delta < -.018:
+            movement = "Baixa visual relativa"
+        else:
+            movement = "Movimento visual indefinido"
+        explanation = (
+            f"{len(completed)} corpos coloridos estimados como velas anteriores; "
+            f"ultima vela excluida por poder estar em formacao. {movement}. "
+            "Posicoes relativas dos pixels, NAO cotacoes/tempo de vencimento. "
+            "Nao usar como recomendacao CALL/PUT ou comprovacao de resultado."
+        )
+    return Assessment(when, len(detected), len(completed), movement, explanation)
+
+
+class ScreenMonitor:
+    """Captura sob acao explicita do usuario; threads nao acessam widgets Tk.
+
+    Entrega imagem em memoria e avaliacao em fila de capacidade 1. Nenhum frame
+    e salvo em disco, transmitido ou enviado para a corretora.
+    """
+    def __init__(self, region: Region, interval_seconds: float = 1.2):
+        if not (0.5 <= interval_seconds <= 10):
+            raise ValueError("Intervalo de atualizacao invalido")
+        self.region = region
+        self.interval_seconds = interval_seconds
+        self.results = Queue(maxsize=1)
+        self._stop = threading.Event()
+        self._thread = None
+
+    @property
+    def running(self):
+        return self._thread is not None and self._thread.is_alive()
+
+    def start(self):
+        if self.running:
+            return
+        self._stop.clear()
+        self._thread = threading.Thread(target=self._run, daemon=True, name="ds-screen-read-only")
+        self._thread.start()
+
+    def stop(self):
+        self._stop.set()
+        if self._thread is not None and threading.current_thread() is not self._thread:
+            self._thread.join(timeout=3)
+
+    def _emit(self, data):
+        try:
+            self.results.put_nowait(data)
+        except Full:
+            try:
+                self.results.get_nowait()
+            except Empty:
+                pass
+            self.results.put_nowait(data)
+
+    def _run(self):
+        try:
+            from mss import mss
+            from PIL import Image
+            with mss() as capture:
+                virtual = capture.monitors[0]
+                r = self.region
+                if (r.left < virtual["left"] or r.top < virtual["top"] or
+                    r.left + r.width > virtual["left"] + virtual["width"] or
+                    r.top + r.height > virtual["top"] + virtual["height"]):
+                    raise ValueError("A area selecionada ultrapassa a tela disponivel")
+                while not self._stop.is_set():
+                    began = time.monotonic()
+                    shot = capture.grab(r.mss_rect())
+                    frame = Image.frombytes("RGB", shot.size, shot.rgb)
+                    result = assess(frame)
+                    frame.thumbnail((680, 380))
+                    self._emit((result, frame))
+                    self._stop.wait(max(0, self.interval_seconds - (time.monotonic() - began)))
+        except Exception as exc:
+            # Nao registra pixels, janela, titulo ou dados de conta.
+            self._emit(("error", f"Captura interrompida: {type(exc).__name__}: {exc}"))
