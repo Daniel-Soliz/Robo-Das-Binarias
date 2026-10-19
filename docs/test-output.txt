@@ -1,0 +1,28 @@
+test_bad_files (test_core.ImportTests.test_bad_files) ... ok
+test_header_and_empty (test_core.ImportTests.test_header_and_empty) ... ok
+test_missing_quotes_accepted_not_fabricated (test_core.ImportTests.test_missing_quotes_accepted_not_fabricated) ... ok
+test_sources_and_otc_separate (test_core.ImportTests.test_sources_and_otc_separate) ... ok
+test_timezone_conversion (test_core.ImportTests.test_timezone_conversion) ... ok
+test_valid_and_volume_optional (test_core.ImportTests.test_valid_and_volume_optional) ... ok
+test_delayed_entry_and_exact_expiry (test_core.SimulationTests.test_delayed_entry_and_exact_expiry) ... ok
+test_holdout_and_frozen_parameters (test_core.SimulationTests.test_holdout_and_frozen_parameters) ... ok
+test_hypothetical_payout (test_core.SimulationTests.test_hypothetical_payout) ... ok
+test_no_reveal_before_settlement (test_core.SimulationTests.test_no_reveal_before_settlement) ... ok
+test_offline_and_ai_absent (test_core.SimulationTests.test_offline_and_ai_absent) ... ok
+test_one_operation_and_no_repeated_signals (test_core.SimulationTests.test_one_operation_and_no_repeated_signals) ... ok
+test_payoffs_and_ties (test_core.SimulationTests.test_payoffs_and_ties) ... ok
+test_stop_and_repeat (test_core.SimulationTests.test_stop_and_repeat) ... ok
+test_variable_payout_drawdown_streak_wilson (test_core.SimulationTests.test_variable_payout_drawdown_streak_wilson) ... ok
+test_csv_formula_safety (test_core.StorageTests.test_csv_formula_safety) ... ok
+test_persistence_backup_export (test_core.StorageTests.test_persistence_backup_export) ... ok
+test_every_prefix_identical_no_future_leakage (test_core.StrategyTests.test_every_prefix_identical_no_future_leakage) ... ok
+test_expired_retest (test_core.StrategyTests.test_expired_retest) ... ok
+test_invalidated_retest (test_core.StrategyTests.test_invalidated_retest) ... ok
+test_no_duplicate_or_gap_processing (test_core.StrategyTests.test_no_duplicate_or_gap_processing) ... ok
+test_parameter_validation (test_core.StrategyTests.test_parameter_validation) ... ok
+test_pivot_confirmation_and_symmetric_signals (test_core.StrategyTests.test_pivot_confirmation_and_symmetric_signals) ... ok
+
+----------------------------------------------------------------------
+Ran 23 tests in 0.165s
+
+OK

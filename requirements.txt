@@ -1,8 +1,3 @@
-mss>=9,<11
-opencv-python>=4.8,<5
-numpy>=1.26,<3
-Pillow>=10,<12
-pytesseract>=0.3.10,<1
-PyQt6>=6.6,<7
-python-dotenv>=1,<2
-pytest>=8,<10
+# DS Trader runtime: biblioteca padrão Python 3.11.9 (inclui Tk no Windows).
+# Nenhum pacote de terceiros necessário. Build: requirements-build.txt.
+# Captura/API antiga: requirements-legacy.txt (fora do aplicativo DS Trader).

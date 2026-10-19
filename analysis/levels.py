@@ -97,3 +97,4 @@ def detectar_zonas(
 def perto_de_zona(preco: float, zona: Zona, margem: float = 0.0) -> bool:
     """Testa presença dentro ou muito próximo de uma faixa."""
     return zona.inferior - margem <= preco <= zona.superior + margem
+

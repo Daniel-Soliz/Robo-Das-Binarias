@@ -101,3 +101,4 @@ def detectar_padroes(candles: Sequence[Candle]) -> tuple[Padrao, ...]:
             if all(tres[i].fechamento < tres[i - 1].fechamento for i in (1, 2)):
                 adicionar("três corvos negros", "VENDA", 3)
     return tuple(resultados)
+

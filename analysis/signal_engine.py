@@ -186,3 +186,4 @@ class MotorAnalise:
             operacional=False,
             validade_segundos=0,
         )
+

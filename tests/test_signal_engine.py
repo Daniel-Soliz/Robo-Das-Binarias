@@ -80,3 +80,4 @@ def test_sessao_nao_mistura_ativos_e_rejeita_otc():
     assert sessao.receber(
         Amostra(ativo="EURUSD-OTC", timeframe="M5", estado=EstadoFonte.OTC_IGNORADO)
     ).estado == "OTC ignorado"
+

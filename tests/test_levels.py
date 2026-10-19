@@ -31,3 +31,4 @@ def test_pivos_e_zonas_com_toques_repetidos():
 def test_zona_nao_surge_de_um_unico_toque():
     serie = [vela(v) for v in [.60, .55, .50, .55, .60, .62, .64, .66]]
     assert not any(z.tipo == "suporte" for z in detectar_zonas(serie))
+

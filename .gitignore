@@ -30,3 +30,15 @@ dist/
 *.webp
 *.bmp
 *.tiff
+
+
+# DS Trader build and user data
+build/
+dist/
+release/
+*.spec
+*.sqlite3
+DS-Trader-Windows-x64*
+smoke-result.json
+smoke-error.txt
+!examples/*.csv

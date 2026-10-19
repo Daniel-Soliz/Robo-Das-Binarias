@@ -97,3 +97,4 @@ def calibrar_tela(configuracao: Configuracao) -> Configuracao:
     configuracao.regiao_cabecalho = cabecalho.regiao
     configuracao.validar()
     return configuracao
+

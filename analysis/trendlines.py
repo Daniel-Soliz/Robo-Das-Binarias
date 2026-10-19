@@ -109,3 +109,4 @@ def detectar_linhas(
             # Preferir maior número de toques e pivô mais recente.
             linhas.append(max(possiveis, key=lambda l: (l.toques, l.primeiro_indice)))
     return tuple(linhas)
+

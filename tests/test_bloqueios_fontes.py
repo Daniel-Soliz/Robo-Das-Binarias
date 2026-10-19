@@ -57,3 +57,4 @@ def test_tela_otc_nao_le_a_area_do_grafico(monkeypatch):
     assert len(captura.regioes) == 1  # Apenas cabeçalho; nenhuma leitura do gráfico.
     assert recebidos[0].estado is EstadoFonte.OTC_IGNORADO
     assert recebidos[0].candles == ()
+

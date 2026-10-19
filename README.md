@@ -1,88 +1,77 @@
-# Robô das Binárias — análise técnica em diagnóstico (Etapa 3)
+# DS Trader — Análise e Simulação
 
-Aplicação Python para **observar gráficos** de Forex na IQ Option. O objetivo final é emitir alertas de decisão manual; as Etapas 2 e 3 capturam dados e calculam confluência teórica, ainda sem alertas operacionais. O software **não executa operações, não clica na plataforma, não movimenta dinheiro e não envia ordens**. Ativos identificados como OTC são ignorados.
+Aplicativo desktop local em português para estudar **rompimento e reteste**. Importa CSV, mostra candles e regiões, reproduz cronologicamente, explica eventos, simula e exporta resultados. **Não envia ordens nem conecta à corretora.**
 
-## Instalação — Windows 10/11
+## Começar no Windows 10/11 x64
 
-1. Instale Python 3.11 e o executável **Tesseract OCR**. Inclua o diretório do Tesseract no `PATH` e confirme no PowerShell com `tesseract --version`.
-2. Clone ou baixe este repositório e abra o terminal na sua raiz.
-3. Execute:
+1. Abra a aba **Actions** deste repositório, execução **DS Trader - testes e Windows** do commit desejado.
+2. Somente se o trabalho `windows` estiver verde, baixe o artifact **DS-Trader-Windows-x64**. Pode ser necessário entrar no GitHub.
+3. Extraia o artifact e depois `DS-Trader-Windows-x64.zip` por completo.
+4. **Portátil:** abra `DS-Trader/DS-Trader.exe`, mantendo `_internal` ao lado.
+5. **Instalação simples opcional:** execute `Instalar.cmd`. Copia o aplicativo para sua pasta de usuário e cria atalho na Área de Trabalho, sem administrador. Não é instalador MSI/EXE assinado.
+6. No aplicativo clique **Exemplo sintético → Iniciar / continuar**. Veja **Sinais e histórico** e **Resultados**; exporte JSON + CSV.
+
+Não há binário verificado até o build/teste Windows completar. O pacote não possui assinatura digital. Não desative proteções do Windows para executá-lo. Consulte [testes e limitações](docs/TESTES.md).
+
+## Executar a partir do código
+
+Instale **Python 3.11.9 x64** com Tcl/Tk (distribuição oficial Windows). Na pasta extraída:
+
+```powershell
+py -3.11 main.py
+```
+
+O aplicativo usa somente a biblioteca padrão. Não requer OCR, conta, chave de IA, banco remoto ou pacote pip para executar pelo código.
+
+## Gerar o pacote Windows
+
+Em Windows com Python 3.11.9 x64:
 
 ```powershell
 py -3.11 -m venv .venv
 .\.venv\Scripts\Activate.ps1
-python -m pip install -r requirements.txt
-python main.py --modo tela
+python -m pip install pip==24.3.1
+powershell -NoProfile -ExecutionPolicy Bypass -File scripts/build.ps1
 ```
 
-### Primeira calibração
+Dependências do build e suas versões estão em `requirements-build.txt`. O script executa testes, empacota com PyInstaller 6.11.1, abre o executável e testa gráfico, simulação, gravação e exportação. Saída: `DS-Trader-Windows-x64.zip` e SHA256. A compilação é feita em Windows; não se renomeiam arquivos para `.exe`. Não prometemos build bit a bit idêntico: imagem Windows, pip e artefatos upstream podem mudar.
 
-Com o gráfico aberto e visível:
-1. No primeiro seletor de tela, arraste uma área que inclua **somente a região das velas**, evitando botões, indicadores e rótulos.
-2. No segundo seletor, selecione a área que exibe **o ativo e o timeframe M5 ou M15** simultaneamente.
-3. Confira no terminal o ativo, período e número de candles reconhecidos.
-4. Pressione `Ctrl+C` no terminal para encerrar.
+## Dados
 
-O arquivo pessoal `config.json` é gerado automaticamente e fica **fora do controle de versão**. Para repetir, execute `python main.py --recalibrar`. Parâmetros de FPS, intervalos e regiões estão em `config.example.json` e podem ser personalizados no `config.json`.
+CSV UTF-8, vírgula como separador e ponto decimal:
 
-**Limitações desta etapa:** o Modo A reconhece aproximadamente velas verdes/vermelhas por cor. Cores não padronizadas, corpos muito estreitos, candles sobrepostos, zoom, indicadores visuais e mudança de escala podem causar erros. Os OHLCs extraídos da imagem são **relativos entre 0 e 1**, sem preços ou timestamps históricos garantidos. O gráfico M5 sozinho não fornece uma série M15 verificável; não há geração de sinais. Se OCR falhar ou detectar OTC, a análise para. A captura deve ser validada na sua própria máquina; não foi feita validação prática na IQ Option a partir deste ambiente.
-
-## Modo B — API experimental e não oficial
-
-A biblioteca comunitária [iqoptionapi](https://github.com/iqoptionapi/iqoptionapi) **não é oficial** e sua compatibilidade com versões atuais da plataforma não é garantida. A documentação alerta que `get_candles` pode atrasar cerca de **30 segundos**. Portanto, ela **não deve ser tratada como uma fonte confiável para expiração de 1 minuto**. Usar somente **conta DEMO**.
-
-Opcionalmente instale via Git (pode apresentar conflitos por ser biblioteca antiga):
-
-```powershell
-python -m pip install "git+https://github.com/iqoptionapi/iqoptionapi.git"
+```csv
+timestamp,asset,source,market,interval_seconds,open,high,low,close
+2025-01-06T09:00:00-03:00,EURUSD,MINHA-FONTE,REGULAR,60,1.03,1.031,1.029,1.0305
 ```
 
-Depois copie `.env.example` para `.env`, preencha `IQ_EMAIL` e `IQ_PASSWORD` **somente localmente** e, após conferir o uso de conta DEMO, configure `IQ_CONTA_DEMO_CONFIRMADA=SIM`. Ajuste `api_ativo` em `config.json` (ex.: `EURUSD`), nunca um ativo OTC. Execute:
+- `timestamp`: abertura da barra, com fuso. Candles abertos/futuros não são aceitos.
+- `market`: `REGULAR` ou `OTC`; nunca misturamos fontes, mercados ou intervalos.
+- `volume`: opcional; não é fabricado.
+- `open_time`: opcional; **horário observado da cotação `open`**, dentro da barra. Só preencha se comprovado pela fonte. Não copie automaticamente o horário do candle.
+- `payout` e `payout_known_at`: opcionais; payout entre 0 e 1, conhecido até `open_time`. Sem ele, usa o cenário hipotético configurado.
 
-```powershell
-python main.py --modo api
-```
+Dados OHLC comuns permitem analisar, mas não garantem entrada/vencimento: sem cotações com horários exatos, o resultado é **indeterminado**. A V1 aceita uma cotação explícita de abertura por barra; não importa ticks separados. Expirações fora da grade dessas cotações ficam indeterminadas. Não extrapola, interpola nem substitui a fonte.
 
-O adaptador utiliza somente `connect`, `check_connect` e `get_candles`. **Não verifica nem altera automaticamente o tipo da conta**; cabe ao operador assegurar que é DEMO. Existe reconexão com espera progressiva e rejeição de dados inválidos. A rede, o login e a API não foram validados ao vivo nesta etapa.
+Qualquer duplicata, ordem inválida, lacuna, OHLC inconsistente, fuso ausente ou intervalo incorreto **rejeita o arquivo inteiro**, com número de linha. Para sessões separadas por fins de semana/pausas, importe arquivos contínuos separados; não há calendário de pregão automático. Origem e horários declarados não são certificados pelo aplicativo.
+
+## Documentação
+
+- [Manual simples](docs/MANUAL.md)
+- [Regras objetivas e parâmetros](docs/ESTRATEGIA.md)
+- [Diagnóstico, IQ Option e arquitetura](docs/DIAGNOSTICO.md)
+- [Testes executados e limitações](docs/TESTES.md)
+- [Documentação antiga preservada](docs/LEGADO.md)
+
+O histórico/configuração ficam em `%LOCALAPPDATA%\DS Trader\history.sqlite3`. Exportação JSON inclui dados importados, SHA256, eventos, operações, versão e parâmetros. CSVs são próprios para planilhas; campos textuais que parecem fórmulas são escapados. Backup é SQLite completo.
 
 ## Testes
 
 ```powershell
-python -m pytest -q
+python -m unittest discover -s tests_ds -v
+python -m scripts.gui_smoke
 ```
 
-A suíte cobre contrato/configuração, regra OTC, identificação OCR por texto simulado, velas coloridas sintéticas e normalização de candles simulados da API. Há workflow para Windows e Linux no GitHub Actions. Testes de indicadores e confluência serão adicionados na Etapa 3.
+O segundo comando precisa de ambiente gráfico. O código antigo e seus testes estão preservados; dependências em `requirements-legacy.txt`, entrada antiga `legacy_main.py`. **Não integram a interface nem o executável DS Trader.** Reaproveitamos `data_sources.base.Candle` e `analysis.levels.detectar_pivos`.
 
-## Segurança e aviso de risco
-
-- `.env`, `config.json`, logs, capturas e CSVs locais são ignorados pelo Git; jamais publique credenciais.
-- A captura não realiza cliques, digitação ou comandos na IQ Option.
-- OCR incerto, OTC e histórico insuficiente não produzem recomendações.
-- Opções binárias e digitais apresentam alto risco de perda. Nenhuma ferramenta garante acertos ou rentabilidade.
-
-## Etapa 3 — motor de análise M5/M15 (somente diagnóstico)
-
-Implementações na pasta analysis/:
-- indicators.py: EMA 9/21/50 e RSI 14 de Wilder; aquecimento explícito.
-- patterns.py: engolfos, haramis, martelos, enforcado, doji, pin bars, estrelas e três soldados/corvos.
-- levels.py: pivôs confirmados, zonas de reação e quantidade de toques.
-- trendlines.py: LTA/LTB com inclinação, contatos, toque, rompimento ou reteste.
-- signal_engine.py: pontuação M15 (25), zona (20), padrão (20), linha (15), EMA (10), RSI (10).
-- session.py: agrupa M5/M15 do mesmo ativo e da mesma fonte sem misturar mercados.
-
-### Sinais operacionais desabilitados
-
-Não existe comando ou opção de configuração capaz de habilitar sinais reais nesta etapa.
-O resultado operacional é sempre False, validade_segundos sempre 0, sem alerta sonoro, clique, compra, venda ou envio de ordens.
-Se todos os filtros forem satisfeitos, o terminal pode exibir apenas CANDIDATO TEÓRICO — NÃO OPERACIONAL.
-Os dados extraídos pela tela têm valores normalizados, sem preço e tempo histórico confiáveis: o Modo A permanece AGUARDAR.
-A API comunitária é não oficial e pode atrasar; seu diagnóstico nunca representa autorização de entrada.
-A nota 100/100 representa confluência, NÃO probabilidade medida de acerto.
-
-### Testar
-
-Execute python -m pytest -q. São testados indicadores, padrões, zonas, tendência, pontuação e bloqueios.
-Para personalizar a pontuação altere pontuacao_minima no config.json (50–100; padrão 75). Isso não libera sinais.
-A leitura real em Windows e sua consistência ainda exigem validação presencial; a expiração de um minuto ainda não foi validada.
-
-O cooldown diagnóstico configurável (padrão 180 segundos) evita repetir hipóteses do mesmo ativo e direção, sem habilitar alertas de entrada.
+Dados sintéticos em `examples/` servem exclusivamente a aprendizado e teste de software. Lucro histórico não valida estratégia. Wilson 95% pressupõe independência, o que operações financeiras podem não ter. Não há previsão probabilística, martingale, otimização automática, IA externa ou ordens reais.

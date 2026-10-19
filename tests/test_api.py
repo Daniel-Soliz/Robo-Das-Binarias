@@ -28,3 +28,4 @@ def test_normalizacao_e_fechamento():
 
 def test_api_nao_aceita_preco_impossivel():
     assert converter_candles_api([criar_dado(1000, min=1.2)], "M5", 1500) == ()
+

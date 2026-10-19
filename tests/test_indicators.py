@@ -31,3 +31,4 @@ def test_periodo_invalido():
         ema([1, 2, 3], 1)
     with pytest.raises(ValueError):
         rsi([1, float("nan")], 14)
+

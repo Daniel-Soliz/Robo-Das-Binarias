@@ -20,3 +20,4 @@ def test_sem_operacao_ou_novo_alerta_no_cooldown():
     limitador = CooldownCandidatos()
     assert limitador.permitir("EURUSD", "COMPRA", atual)
     assert not limitador.permitir("EURUSD", "COMPRA", atual)
+

@@ -47,3 +47,4 @@ def extrair_texto(imagem_bgr: np.ndarray) -> str:
     contraste = cv2.equalizeHist(ampliada)
     # PSM 6 preserva linhas e rótulos adjacentes do cabeçalho.
     return pytesseract.image_to_string(contraste, config="--psm 6")
+

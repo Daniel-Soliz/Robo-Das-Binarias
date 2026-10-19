@@ -65,3 +65,4 @@ def test_ignorar_velas_abertas():
         timeframe="M5", finalizado=False, preco_real=False, origem="teste"
     )
     assert "engolfo de alta" not in nomes(vela(.7, .75, .45, .5), ultima)
+

@@ -33,3 +33,4 @@ def test_ltb_com_maximas_descendentes():
 def test_sem_linha_sem_pivos():
     serie = [vela(i / 100, i / 100 + .1) for i in range(30)]
     assert detectar_linhas(serie) == ()
+

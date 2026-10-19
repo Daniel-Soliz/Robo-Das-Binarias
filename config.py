@@ -111,3 +111,4 @@ def salvar_configuracao(
         encoding="utf-8",
     )
     temporario.replace(caminho)
+

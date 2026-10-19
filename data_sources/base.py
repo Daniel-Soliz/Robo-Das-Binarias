@@ -74,3 +74,4 @@ class DataSource(ABC):
     @abstractmethod
     def parar(self) -> None:
         """Finaliza a leitura e encerra threads auxiliares."""
+

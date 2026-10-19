@@ -1,32 +1,58 @@
-name: Testes Python
+name: DS Trader - testes e Windows
 on:
   push:
     branches: [main]
   pull_request:
     branches: [main]
+  workflow_dispatch:
 permissions:
   contents: read
 jobs:
-  testes:
-    name: Testes em ${{ matrix.os }}
+  core:
     runs-on: ${{ matrix.os }}
     strategy:
-      fail-fast: false
       matrix:
-        os: [ubuntu-latest, windows-latest]
+        os: [ubuntu-22.04, windows-2022]
     steps:
-      - name: Obter código
-        uses: actions/checkout@v4
-      - name: Preparar Python
-        uses: actions/setup-python@v5
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
         with:
-          python-version: "3.11"
-          cache: pip
-      - name: Instalar bibliotecas
-        run: |
-          python -m pip install --upgrade pip
-          python -m pip install -r requirements.txt
-      - name: Executar testes
+          python-version: '3.11.9'
+          architecture: x64
+      - run: python -m unittest discover -s tests_ds -v
+  legacy:
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11.9'
+      - run: python -m pip install -r requirements-legacy.txt
+      - run: python -m pytest tests -q
         env:
           QT_QPA_PLATFORM: offscreen
-        run: python -m pytest -q
+  windows:
+    needs: core
+    runs-on: windows-2022
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11.9'
+          architecture: x64
+      - name: Construir e abrir aplicativo real
+        shell: pwsh
+        run: ./scripts/build.ps1
+      - uses: actions/upload-artifact@v4
+        with:
+          name: DS-Trader-Windows-x64
+          path: |
+            DS-Trader-Windows-x64.zip
+            DS-Trader-Windows-x64.sha256.txt
+            smoke-result.json
+          if-no-files-found: error
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: diagnostico-windows
+          path: smoke-error.txt

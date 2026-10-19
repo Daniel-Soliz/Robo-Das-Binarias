@@ -52,3 +52,4 @@ class SessaoAnalise:
                 motivos=("Cooldown de candidato teórico ativo.",),
             )
         return resultado
+

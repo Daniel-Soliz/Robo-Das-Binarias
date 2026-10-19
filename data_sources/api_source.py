@@ -182,3 +182,4 @@ class ApiSource(DataSource):
                 )
                 self._parar.wait(espera_reconexao)
                 espera_reconexao = min(espera_reconexao * 2, 60.0)
+

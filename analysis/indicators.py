@@ -81,3 +81,4 @@ def tendencia_emas(candles: Sequence[Candle]) -> str:
     if e9 < e21 < e50 and fechamentos[-1] < e21:
         return "baixa"
     return "lateral"
+

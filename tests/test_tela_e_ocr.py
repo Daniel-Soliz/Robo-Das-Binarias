@@ -40,3 +40,4 @@ def test_velas_normalizadas_com_corpo_e_pavio():
 def test_frame_sem_velas():
     imagem = np.zeros((120, 160, 3), dtype=np.uint8)
     assert extrair_velas(imagem, "M5") == ()
+

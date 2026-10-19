@@ -202,3 +202,4 @@ class ScreenSource(DataSource):
                     quadros = 0
                     janela_fps = time.monotonic()
                 self._parar.wait(max(0.0, 1.0 / config.captura_fps - (time.monotonic() - inicio)))
+

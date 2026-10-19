@@ -26,3 +26,4 @@ class CooldownCandidatos:
                 return False
         self._ultimo[chave] = instante
         return True
+

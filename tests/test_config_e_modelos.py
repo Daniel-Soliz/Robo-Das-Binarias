@@ -35,3 +35,4 @@ def test_candle_invalido():
     dados["maxima"] = 0.3
     with pytest.raises(ValueError):
         Candle(**dados)
+
