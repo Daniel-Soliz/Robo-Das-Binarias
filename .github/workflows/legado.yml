@@ -1,0 +1,19 @@
+name: DS Trader - testes do codigo legado
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  legacy:
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11.9'
+      - name: Instalar dependencias antigas
+        run: python -m pip install -r requirements-legacy.txt
+      - name: Testar modulo legado preservado
+        run: python -m pytest tests -q
+        env:
+          QT_QPA_PLATFORM: offscreen
