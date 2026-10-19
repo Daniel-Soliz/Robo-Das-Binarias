@@ -1,11 +1,26 @@
+# Build reproduzivel no Windows: tests -> PyInstaller -> GUI real -> Inno Setup -> instalacao real.
 $ErrorActionPreference = 'Stop'
 Set-Location (Join-Path $PSScriptRoot '..')
+
 python -m pip install -r requirements-build.txt
-if ($LASTEXITCODE -ne 0) { throw 'Falha ao instalar dependências' }
+if ($LASTEXITCODE -ne 0) { throw 'Falha ao instalar dependencias de build' }
 python -m unittest discover -s tests_ds -v
-if ($LASTEXITCODE -ne 0) { throw 'Testes falharam' }
+if ($LASTEXITCODE -ne 0) { throw 'Testes do motor falharam' }
+
+foreach ($folder in @('release', 'release-build')) {
+    if (Test-Path $folder) { Remove-Item $folder -Recurse -Force }
+}
+Remove-Item smoke-result.json, smoke-error.txt -ErrorAction SilentlyContinue
+
 python -m PyInstaller --noconfirm --clean --windowed --name DS-Trader main.py
-if ($LASTEXITCODE -ne 0) { throw 'Build falhou' }
+if ($LASTEXITCODE -ne 0) { throw 'PyInstaller falhou' }
+$exe = (Resolve-Path 'dist/DS-Trader/DS-Trader.exe').Path
+$p = Start-Process -FilePath $exe -ArgumentList '--smoke-test' -WorkingDirectory (Get-Location).Path -Wait -PassThru
+if ($p.ExitCode -ne 0 -or !(Test-Path smoke-result.json)) {
+    throw 'O executavel real falhou no teste de GUI. Consulte smoke-error.txt'
+}
+
+# Pacote portatil, para quem preferir sem instalacao.
 New-Item -ItemType Directory -Force -Path release | Out-Null
 Copy-Item dist/DS-Trader release/DS-Trader -Recurse -Force
 Copy-Item examples release/examples -Recurse -Force
@@ -13,13 +28,34 @@ Copy-Item docs release/docs -Recurse -Force
 Copy-Item README.md release/README.md -Force
 Copy-Item scripts/install.ps1 release/install.ps1 -Force
 Copy-Item scripts/Instalar.cmd release/Instalar.cmd -Force
-$p = Start-Process -FilePath 'dist/DS-Trader/DS-Trader.exe' -ArgumentList '--smoke-test' -Wait -PassThru
-if ($p.ExitCode -ne 0 -or !(Test-Path smoke-result.json)) { throw 'Smoke test do executável falhou' }
-& ./release/install.ps1
-$installed = Join-Path $env:LOCALAPPDATA 'Programs/DS-Trader/DS-Trader.exe'
-$p = Start-Process -FilePath $installed -ArgumentList '--smoke-test' -Wait -PassThru
-if ($p.ExitCode -ne 0) { throw 'Aplicativo instalado falhou' }
-if (!(Test-Path (Join-Path ([Environment]::GetFolderPath('Desktop')) 'DS Trader.lnk'))) { throw 'Atalho não criado' }
-Copy-Item smoke-result.json release/smoke-result.json
+Copy-Item smoke-result.json release/smoke-result.json -Force
 Compress-Archive -Path release/* -DestinationPath DS-Trader-Windows-x64.zip -Force
-Get-FileHash DS-Trader-Windows-x64.zip -Algorithm SHA256 | Format-List | Out-File DS-Trader-Windows-x64.sha256.txt
+$portableHash = (Get-FileHash DS-Trader-Windows-x64.zip -Algorithm SHA256).Hash.ToLowerInvariant()
+"$portableHash  DS-Trader-Windows-x64.zip" | Set-Content DS-Trader-Windows-x64.sha256.txt -Encoding Ascii
+
+# Inno Setup cria o assistente tradicional, desinstalador e atalho do desktop.
+$iscc = Join-Path ${env:ProgramFiles(x86)} 'Inno Setup 6\ISCC.exe'
+if (!(Test-Path $iscc)) {
+    choco install innosetup --version=6.4.3 --yes --no-progress
+    if ($LASTEXITCODE -ne 0) { throw 'Falha ao instalar Inno Setup 6.4.3' }
+}
+if (!(Test-Path $iscc)) { throw "Compilador Inno Setup nao encontrado: $iscc" }
+& $iscc 'scripts/DS-Trader.iss'
+if ($LASTEXITCODE -ne 0) { throw 'Erro ao gerar instalador Inno Setup' }
+$installer = (Resolve-Path 'release-build/DS-Trader-Setup.exe').Path
+
+# Validacao do fluxo que o usuario vera: instalar, atalho e iniciar o instalado.
+$p = Start-Process -FilePath $installer -ArgumentList @('/VERYSILENT','/SUPPRESSMSGBOXES','/NORESTART','/SP-') -Wait -PassThru
+if ($p.ExitCode -ne 0) { throw "O instalador retornou erro $($p.ExitCode)" }
+$installed = Join-Path $env:LOCALAPPDATA 'Programs\DS Trader\DS-Trader.exe'
+if (!(Test-Path $installed)) { throw "Executavel instalado nao encontrado: $installed" }
+$desktopShortcut = Join-Path ([Environment]::GetFolderPath('Desktop')) 'DS Trader.lnk'
+if (!(Test-Path $desktopShortcut)) { throw 'Atalho de Area de Trabalho nao foi criado' }
+$p = Start-Process -FilePath $installed -ArgumentList '--smoke-test' -WorkingDirectory (Get-Location).Path -Wait -PassThru
+if ($p.ExitCode -ne 0) { throw 'Aplicativo instalado falhou no teste real' }
+if (!(Test-Path smoke-result.json)) { throw 'Relatorio do teste GUI ausente' }
+Copy-Item smoke-result.json release-build/smoke-result.json -Force
+
+$installerHash = (Get-FileHash $installer -Algorithm SHA256).Hash.ToLowerInvariant()
+"$installerHash  DS-Trader-Setup.exe" | Set-Content DS-Trader-Setup.sha256.txt -Encoding Ascii
+Write-Host 'BUILD CONCLUIDO: DS-Trader-Setup.exe + pacote portatil + SHA256'
