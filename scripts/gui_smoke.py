@@ -9,7 +9,10 @@ import tkinter as tk
 def run():
     with tempfile.TemporaryDirectory() as tmp:
         root=tk.Tk();store=Store(Path(tmp)/'state.sqlite3');app=App(root,store)
-        root.update();app.demo();app.new_replay()
+        root.update()
+        assert app.screen_view is not None, 'Aba de monitoramento visual ausente'
+        assert not app.screen_view.active, 'Captura nao pode iniciar sem consentimento'
+        app.demo();app.new_replay()
         for _ in range(15):app.advance();root.update()
         assert app.canvas.find_all(), 'Gráfico não desenhado'
         app.pause();assert not app.running
