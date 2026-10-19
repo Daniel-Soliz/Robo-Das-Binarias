@@ -1,5 +1,8 @@
 """Testes deterministas da leitura visual sem permissao para capturar tela real."""
 import unittest
+import sys
+from types import SimpleNamespace
+from unittest.mock import patch
 from PIL import Image, ImageDraw
 from ds_trader.live_screen import Region, ScreenMonitor, detect_visual_candles, assess
 
@@ -56,6 +59,32 @@ class ScreenAnalysisTests(unittest.TestCase):
         self.assertGreaterEqual(result.completed_estimate, 10)
         self.assertEqual(result.movement, "Baixa visual relativa")
         self.assertFalse(result.is_market_quote)
+
+    def test_continuous_capture_with_fake_desktop_stays_local(self):
+        image = sample(upward=True)
+
+        class Capture:
+            monitors = [dict(left=0, top=0, width=1200, height=800)]
+            def __enter__(self):
+                return self
+            def __exit__(self, *_args):
+                return False
+            def grab(self, _rect):
+                return SimpleNamespace(size=image.size, rgb=image.tobytes())
+
+        fake_mss = SimpleNamespace(mss=lambda: Capture())
+        monitor = ScreenMonitor(Region(20, 10, 750, 330), interval_seconds=0.5)
+        with patch.dict(sys.modules, {"mss": fake_mss}):
+            try:
+                monitor.start()
+                result, frame = monitor.results.get(timeout=6)
+                self.assertGreaterEqual(result.detected, 10)
+                self.assertLessEqual(frame.width, 680)
+                self.assertFalse(result.is_market_quote)
+                self.assertFalse(result.trading_signal)
+            finally:
+                monitor.stop()
+        self.assertFalse(monitor.running)
 
     def test_no_market_price_or_expiry_extracted(self):
         result = assess(sample(upward=True))
