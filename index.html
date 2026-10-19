@@ -1,0 +1,149 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#08111e">
+  <meta name="description" content="Baixe o DS Trader para Windows. Instalador com assistente em português e atalho na Área de Trabalho.">
+  <title>Baixar DS Trader — Análise e Simulação</title>
+  <style>
+    :root { color-scheme: dark; --bg:#07101b; --panel:#101d2c; --line:#27384c; --ink:#f5f9ff; --muted:#acbdd0; --cyan:#38d4f5; --blue:#268cff; }
+    * { box-sizing: border-box; }
+    html { scroll-behavior: smooth; }
+    body { margin:0; background:radial-gradient(ellipse 75% 50% at 50% -10%, #123861 0%, transparent 72%), var(--bg); color:var(--ink); font-family:"Segoe UI",Inter,Arial,sans-serif; line-height:1.55; }
+    a { color:inherit; }
+    a:focus-visible { outline:3px solid var(--cyan); outline-offset:4px; }
+    .container { max-width:990px; padding:0 24px; margin:auto; }
+    header { display:flex; align-items:center; justify-content:space-between; gap:20px; padding:28px 0; border-bottom:1px solid rgba(161,199,236,.13); }
+    .brand { display:flex; align-items:center; gap:13px; text-decoration:none; font-weight:750; letter-spacing:-.3px; }
+    .mark { display:grid; place-items:center; width:51px; height:51px; border-radius:14px; background:linear-gradient(145deg,#113e72,#071527); border:1px solid #3576b7; color:white; font-size:24px; box-shadow:0 0 24px #1679cf2b; font-weight:850; }
+    .brand small { display:block; color:var(--muted); font-weight:500; font-size:12px; letter-spacing:.3px; }
+    .header-note { color:#c1d5e8; font-size:13px; text-align:right; }
+    .header-note span { color:var(--cyan); }
+    .intro { text-align:center; padding:80px 0 40px; }
+    .eyebrow { margin:0 0 16px; color:var(--cyan); letter-spacing:2.3px; font-size:12px; font-weight:800; }
+    h1 { font-size:clamp(34px,5.8vw,60px); line-height:1.12; letter-spacing:-2.1px; margin:0 auto 20px; max-width:770px; }
+    h1 span { color:var(--cyan); }
+    .lead { font-size:17px; color:var(--muted); max-width:660px; margin:0 auto; }
+    .installer { border:1px solid #305479; border-radius:22px; background:linear-gradient(135deg,#142b44 0%,#0f1b2a 57%,#101c2b 100%); box-shadow:0 20px 60px #01071375,inset 0 1px #71a4cd30; padding:40px; display:grid; grid-template-columns:1fr 1fr; gap:34px; align-items:center; }
+    .mini { display:inline-flex; align-items:center; gap:8px; font-weight:650; color:#addcff; font-size:12px; letter-spacing:.5px; text-transform:uppercase; }
+    .dot { width:8px; height:8px; border-radius:50%; background:var(--cyan); box-shadow:0 0 12px #38d4f599; }
+    .installer h2 { margin:13px 0 8px; font-size:30px; line-height:1.2; letter-spacing:-.8px; }
+    .installer p { color:var(--muted); font-size:15px; margin:0; }
+    .info { display:flex; flex-wrap:wrap; gap:9px; margin-top:18px; }
+    .info span { border:1px solid #33506b; border-radius:7px; padding:5px 9px; color:#d0dfed; font-size:12px; }
+    .download-area { text-align:center; }
+    .download-button { display:flex; align-items:center; justify-content:center; gap:10px; min-height:62px; width:100%; padding:14px 15px; border-radius:13px; background:linear-gradient(130deg,#00b6e9,#2089fe); color:#041627; box-shadow:0 12px 35px #008bff2e; font-size:17px; font-weight:850; text-decoration:none; transition:filter .15s,transform .15s; }
+    .download-button:hover { filter:brightness(1.1); transform:translateY(-2px); }
+    .download-button svg { width:22px; height:22px; flex:none; }
+    .status { font-size:12px; color:#b9c9da; margin-top:13px; min-height:37px; }
+    .secondary { display:inline-block; color:#a8ddfc; text-decoration:underline; text-underline-offset:4px; font-size:13px; margin-top:8px; }
+    .secondary:hover { color:white; }
+    .secondary[hidden] { display:none; }
+    .steps-title { font-size:25px; letter-spacing:-.5px; margin:63px 0 24px; text-align:center; }
+    .steps { display:grid; grid-template-columns:repeat(3,1fr); gap:17px; }
+    .step { border:1px solid #253b51; background:#0e1b2ac9; border-radius:15px; padding:23px; }
+    .step-number { color:var(--cyan); font-size:13px; font-weight:800; margin:0 0 11px; }
+    .step h3 { font-size:17px; margin:0 0 6px; }
+    .step p { color:var(--muted); margin:0; font-size:14px; }
+    .warning { background:#0b1827; border-left:3px solid #357cbd; padding:18px 20px; margin:40px 0 50px; color:#b8c8d9; border-radius:0 9px 9px 0; font-size:13px; }
+    footer { border-top:1px solid #213146; color:#93a8c0; padding:25px 0 35px; font-size:12px; display:flex; justify-content:space-between; flex-wrap:wrap; gap:15px; }
+    footer a { color:#b2cce6; }
+    @media (max-width:720px) {
+      .container { padding:0 17px; }
+      header { padding:16px 0; }
+      .header-note { display:none; }
+      .intro { padding:61px 0 31px; }
+      h1 { letter-spacing:-1.2px; }
+      .lead { font-size:15px; }
+      .installer { grid-template-columns:1fr; padding:25px; gap:28px; }
+      .installer h2 { font-size:25px; }
+      .steps { grid-template-columns:1fr; }
+      .steps-title { margin-top:48px; }
+    }
+    @media (prefers-reduced-motion:reduce) { html { scroll-behavior:auto; } .download-button { transition:none; } }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <header>
+      <a class="brand" href="#inicio" aria-label="DS Trader, voltar ao início">
+        <div class="mark" aria-hidden="true">DS</div>
+        <div>DS Trader<small>Análise e Simulação</small></div>
+      </a>
+      <div class="header-note"><span>●</span> Aplicativo local &nbsp;·&nbsp; Windows 10/11 (64 bits)</div>
+    </header>
+    <main id="inicio">
+      <section class="intro">
+        <p class="eyebrow">SEU APLICATIVO PARA WINDOWS</p>
+        <h1>Baixe. Instale.<br><span>Comece a analisar.</span></h1>
+        <p class="lead">O DS Trader reúne gráfico de candles, regiões de suporte e resistência e simulação de estratégias. Um único instalador, com atalho direto na sua Área de Trabalho.</p>
+      </section>
+      <section class="installer" aria-label="Download do aplicativo">
+        <div>
+          <div class="mini"><span class="dot"></span> Edição Windows</div>
+          <h2>DS Trader — Instalador</h2>
+          <p>Instalação guiada em português, sem precisar configurar Python. Depois é só abrir pelo ícone no computador.</p>
+          <div class="info"><span>Windows 10 / 11</span><span>64 bits</span><span id="version">Versão 1.0.0</span></div>
+        </div>
+        <div class="download-area">
+          <a id="download" class="download-button" href="https://github.com/Daniel-Soliz/Robo-Das-Binarias/releases" rel="noopener">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v12m0 0 4-4m-4 4-4-4M4 17v3h16v-3"/></svg>
+            <span id="download-label">Verificar instalador</span>
+          </a>
+          <div id="status" class="status" role="status" aria-live="polite">Verificando se o instalador Windows já está disponível...</div>
+          <a id="portable" class="secondary" href="#" rel="noopener" hidden>Baixar versão portátil (.zip)</a>
+          <div><a id="integrity" class="secondary" href="#" rel="noopener" hidden>Verificar SHA-256 do instalador</a></div>
+        </div>
+      </section>
+      <h2 class="steps-title">Instale em 3 passos</h2>
+      <section class="steps" aria-label="Como instalar o DS Trader">
+        <div class="step"><div class="step-number">01 / DOWNLOAD</div><h3>Baixe o instalador</h3><p>Faça o download do arquivo <strong>DS-Trader-Setup.exe</strong>.</p></div>
+        <div class="step"><div class="step-number">02 / INSTALAÇÃO</div><h3>Siga o assistente</h3><p>Abra o arquivo e siga as instruções até concluir a instalação.</p></div>
+        <div class="step"><div class="step-number">03 / PRONTO</div><h3>Abra o DS Trader</h3><p>Um atalho é criado na Área de Trabalho para abrir o programa sempre que quiser.</p></div>
+      </section>
+      <p class="warning"><strong>Importante:</strong> o DS Trader é um aplicativo de estudo e simulação. Usa dados importados por CSV, não se conecta à IQ Option e não executa ordens reais. O instalador ainda não possui assinatura digital; não desative as proteções do Windows para executá-lo. Os resultados de exemplos sintéticos não demonstram rentabilidade.</p>
+    </main>
+    <footer>
+      <span>© DS Trader · DS Digital</span>
+      <span><a href="https://github.com/Daniel-Soliz/Robo-Das-Binarias" rel="noopener">Código-fonte</a> &nbsp;·&nbsp; <a href="https://github.com/Daniel-Soliz/Robo-Das-Binarias/blob/main/docs/MANUAL.md" rel="noopener">Manual em português</a> &nbsp;·&nbsp; <a href="https://github.com/Daniel-Soliz/Robo-Das-Binarias/actions" rel="noopener">Status da compilação</a></span>
+    </footer>
+  </div>
+  <script>
+    (async function () {
+      const repo = 'Daniel-Soliz/Robo-Das-Binarias';
+      const download = document.getElementById('download');
+      const label = document.getElementById('download-label');
+      const status = document.getElementById('status');
+      const portable = document.getElementById('portable');
+      const integrity = document.getElementById('integrity');
+      function size(n) { return n ? ' (' + (n / 1048576).toFixed(1).replace('.', ',') + ' MB)' : ''; }
+      try {
+        const response = await fetch('https://api.github.com/repos/' + repo + '/releases/latest', {
+          headers: { 'Accept': 'application/vnd.github+json' },
+          cache: 'no-store'
+        });
+        if (!response.ok) throw new Error('Release não disponível');
+        const release = await response.json();
+        const files = Array.isArray(release.assets) ? release.assets : [];
+        const find = name => files.find(f => f.name === name && f.state === 'uploaded');
+        const exe = find('DS-Trader-Setup.exe');
+        if (!exe) throw new Error('Instalador não publicado');
+        download.href = exe.browser_download_url;
+        download.setAttribute('aria-label', 'Baixar instalador DS Trader para Windows');
+        label.textContent = 'Baixar instalador' + size(exe.size);
+        status.textContent = 'Download disponível • arquivo .exe • instalação com atalho na Área de Trabalho';
+        if (release.tag_name) document.getElementById('version').textContent = 'Versão ' + release.tag_name.replace(/^v/, '');
+        const zip = find('DS-Trader-Windows-x64.zip');
+        if (zip) { portable.href = zip.browser_download_url; portable.hidden = false; portable.textContent = 'Alternativa: versão portátil (.zip)' + size(zip.size); }
+        const sha = find('DS-Trader-Setup.sha256.txt');
+        if (sha) { integrity.href = sha.browser_download_url; integrity.hidden = false; }
+      } catch (_error) {
+        download.href = 'https://github.com/' + repo + '/actions';
+        label.textContent = 'Acompanhar preparação do instalador';
+        status.textContent = 'O instalador ainda não foi confirmado. O botão abre o status dos testes no GitHub; o download aparece aqui assim que a compilação for aprovada.';
+      }
+    })();
+  </script>
+</body>
+</html>
