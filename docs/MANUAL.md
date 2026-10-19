@@ -1,6 +1,10 @@
 # Manual rápido — DS Trader
 
-1. Extraia o pacote Windows inteiro. Abra `DS-Trader/DS-Trader.exe`. Alternativamente `Instalar.cmd` cria um atalho para o seu usuário. Não requer login.
+**Instalação normal no Windows 10/11 (64 bits):** abra https://daniel-soliz.github.io/Robo-Das-Binarias/, clique em **Baixar instalador** quando disponível, abra `DS-Trader-Setup.exe` e siga o assistente em português. O instalador cria um atalho **DS Trader** na Área de Trabalho e no Menu Iniciar. Clique nele para iniciar. Não precisa instalar Python e não exige administrador. No Windows, use Configurações > Aplicativos para desinstalar.
+
+**Portátil (opcional):** extraia `DS-Trader-Windows-x64.zip` inteiro e abra `DS-Trader/DS-Trader.exe`, sem mover o arquivo para fora da pasta. A instalação antiga por `Instalar.cmd` continua no ZIP, mas o assistente .exe é a forma recomendada. O programa não requer login.
+
+1. Instale pelo assistente ou abra o portátil, conforme descrito acima.
 2. Clique **Exemplo sintético**. O aviso DEMONSTRAÇÃO indica dados inventados para testar o software.
 3. Em **Configurações**, veja meia largura, tolerância e prazo de reteste. A largura é preço absoluto: valores iniciais são adequados à escala do exemplo, não a todos os ativos.
 4. Clique **Iniciar / continuar**. O gráfico revela barras fechadas em ordem. **Pausar** congela a reprodução; **Avançar uma barra** permite estudar; **Encerrar** finaliza pendências como indeterminadas. Iniciar após encerramento cria nova execução.
