@@ -139,9 +139,9 @@
         const sha = find('DS-Trader-Setup.sha256.txt');
         if (sha) { integrity.href = sha.browser_download_url; integrity.hidden = false; }
       } catch (_error) {
-        download.href = 'https://github.com/' + repo + '/actions';
-        label.textContent = 'Acompanhar preparação do instalador';
-        status.textContent = 'O instalador ainda não foi confirmado. O botão abre o status dos testes no GitHub; o download aparece aqui assim que a compilação for aprovada.';
+        download.href = 'https://github.com/' + repo + '/releases';
+        label.textContent = 'Ver downloads disponíveis no GitHub';
+        status.textContent = 'O instalador ainda não pôde ser confirmado automaticamente. Se a compilação já terminou, ele estará na página de downloads; acompanhe os testes pelo link no rodapé.';
       }
     })();
   </script>
