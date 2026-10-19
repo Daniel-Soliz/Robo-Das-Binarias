@@ -33,7 +33,7 @@ A primeira execução Windows detectou uma leitura de JSON no teste sem encoding
 
 ## Evolução posterior — leitor visual de tela
 
-Foram adicionados `tests_ds/test_live_screen.py` com seis testes unitários para geometria, configuração, imagem em branco e candles coloridos de alta/baixa. Eles verificam também que o modo visual não fornece preço de mercado nem sinal de ordens. O `scripts/gui_smoke.py` agora verifica a existência da aba e a ausência de captura automática.
+Foram adicionados `tests_ds/test_live_screen.py` com sete testes unitários para geometria, configuração, imagem em branco e candles coloridos de alta/baixa. Eles verificam também que o modo visual não fornece preço de mercado nem sinal de ordens. O `scripts/gui_smoke.py` agora verifica a existência da aba e a ausência de captura automática.
 
 **Status:** as alterações foram gravadas no GitHub, mas NÃO há evidência confirmada neste relatório de que o novo CI Windows tenha ficado verde ou que o instalador atualizado tenha sido publicado. A captura real de tela no Windows, com diferentes plataformas, resoluções e tema de cores, NÃO foi validada. Nenhuma alegação de acerto financeiro pode ser baseada no modo visual.
 
