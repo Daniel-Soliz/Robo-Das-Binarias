@@ -5,6 +5,8 @@ Set-Location (Join-Path $PSScriptRoot '..')
 try {
 python -m pip install -r requirements-build.txt
 if ($LASTEXITCODE -ne 0) { throw 'Falha ao instalar dependencias de build' }
+python -m pip install -r requirements-runtime.txt
+if ($LASTEXITCODE -ne 0) { throw 'Falha ao instalar dependencias da captura de tela' }
 python -m unittest discover -s tests_ds -v
 if ($LASTEXITCODE -ne 0) { throw 'Testes do motor falharam' }
 
