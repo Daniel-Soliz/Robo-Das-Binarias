@@ -1,6 +1,18 @@
 # DS Trader — Análise e Simulação
 
-Aplicativo desktop local em português para estudar **rompimento e reteste**. Importa CSV, mostra candles e regiões, reproduz cronologicamente, explica eventos, simula e exporta resultados. **Não envia ordens nem conecta à corretora.**
+Aplicativo desktop local em português para estudar **rompimento e reteste**. Importa CSV, mostra candles e regiões, reproduz cronologicamente, explica eventos, simula e exporta resultados. Também inclui um **modo de leitura visual contínua da tela**, opt-in, sem upload de fotos. **Não envia ordens nem conecta à corretora.**
+
+O modo de tela detecta geometricamente algumas velas verde/vermelho, exibe a região selecionada e descreve somente movimento **visual relativo**. Não consegue obter preços, horários de negociação ou vencimentos oficiais dos pixels; não emite recomendações CALL/PUT e não alimenta o simulador como se fossem cotações reais.
+
+## Monitorar seu gráfico na tela em tempo real (leitura visual)
+
+1. Abra o gráfico em seu navegador/corretora, preferencialmente com fundo escuro e candles verdes/vermelhos visíveis.
+2. No DS Trader abra a guia **Tela ao vivo**. Clique em **Selecionar área do gráfico**.
+3. Arraste o mouse apenas sobre os candles, sem menus, login ou informações pessoais. Pressione **Esc** para cancelar.
+4. Clique em **Iniciar monitoramento**: a cada aproximadamente 1,2 segundo o aplicativo atualiza uma prévia e a observação aproximada de direção visual.
+5. Clique em **Parar** a qualquer momento. A captura não começa sozinha; frames são mantidos somente na memória e não são salvos nem transmitidos.
+
+**Limitações:** cores diferentes, linhas/indicadores sobrepostos, janelas cobertas, mudanças de escala, lag, velas sobrepostas e monitores com DPI especial podem impedir/alterar a leitura. A última vela é tratada como potencialmente aberta. Não usar esse modo como fonte de preço ou prova de rentabilidade. O modo CSV mantém simulação independente.
 
 ## Baixar e instalar no Windows 10/11 (64 bits)
 
@@ -27,7 +39,7 @@ Instale **Python 3.11.9 x64** com Tcl/Tk (distribuição oficial Windows). Na pa
 py -3.11 main.py
 ```
 
-O aplicativo usa somente a biblioteca padrão. Não requer OCR, conta, chave de IA, banco remoto ou pacote pip para executar pelo código.
+Para rodar a partir do código com o modo de tela, instale as bibliotecas de captura com `py -3.11 -m pip install -r requirements-runtime.txt` antes de executar. Bibliotecas fixadas: `mss==9.0.2` e `Pillow==11.0.0`. No instalador Windows já vêm incluídas. O modo CSV e o núcleo da simulação não precisam de OCR, conta, chave de IA nem banco remoto.
 
 ## Gerar o pacote Windows
 
@@ -80,4 +92,4 @@ python -m scripts.gui_smoke
 
 O segundo comando precisa de ambiente gráfico. O código antigo e seus testes estão preservados; dependências em `requirements-legacy.txt`, entrada antiga `legacy_main.py`. **Não integram a interface nem o executável DS Trader.** Reaproveitamos `data_sources.base.Candle` e `analysis.levels.detectar_pivos`.
 
-Dados sintéticos em `examples/` servem exclusivamente a aprendizado e teste de software. Lucro histórico não valida estratégia. Wilson 95% pressupõe independência, o que operações financeiras podem não ter. Não há previsão probabilística, martingale, otimização automática, IA externa ou ordens reais.
+Dados sintéticos em `examples/` servem exclusivamente a aprendizado e teste de software. Lucro histórico não valida estratégia. Wilson 95% pressupõe independência, o que operações financeiras podem não ter. Não há previsão probabilística, martingale, otimização automática, IA externa ou ordens reais. A leitura contínua da tela não substitui dados de mercado autenticados.
