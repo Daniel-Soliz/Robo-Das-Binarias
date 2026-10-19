@@ -35,6 +35,7 @@
     .download-area { text-align:center; }
     .download-button { display:flex; align-items:center; justify-content:center; gap:10px; min-height:62px; width:100%; padding:14px 15px; border-radius:13px; background:linear-gradient(130deg,#00b6e9,#2089fe); color:#041627; box-shadow:0 12px 35px #008bff2e; font-size:17px; font-weight:850; text-decoration:none; transition:filter .15s,transform .15s; }
     .download-button:hover { filter:brightness(1.1); transform:translateY(-2px); }
+    .download-button[aria-disabled="true"] { background:#395269; color:#d3e0eb; box-shadow:none; cursor:not-allowed; pointer-events:none; transform:none; filter:none; }
     .download-button svg { width:22px; height:22px; flex:none; }
     .status { font-size:12px; color:#b9c9da; margin-top:13px; min-height:37px; }
     .secondary { display:inline-block; color:#a8ddfc; text-decoration:underline; text-underline-offset:4px; font-size:13px; margin-top:8px; }
@@ -130,6 +131,7 @@
         const exe = find('DS-Trader-Setup.exe');
         if (!exe) throw new Error('Instalador não publicado');
         download.href = exe.browser_download_url;
+        download.removeAttribute('aria-disabled');
         download.setAttribute('aria-label', 'Baixar instalador DS Trader para Windows');
         label.textContent = 'Baixar instalador' + size(exe.size);
         status.textContent = 'Download disponível • arquivo .exe • instalação com atalho na Área de Trabalho';
@@ -139,9 +141,10 @@
         const sha = find('DS-Trader-Setup.sha256.txt');
         if (sha) { integrity.href = sha.browser_download_url; integrity.hidden = false; }
       } catch (_error) {
-        download.href = 'https://github.com/' + repo + '/actions';
-        label.textContent = 'Acompanhar compilação do instalador';
-        status.textContent = 'Ainda não há instalador .exe confirmado para baixar. Assim que o teste Windows aprovar e o arquivo for publicado, este botão mudará automaticamente para Baixar instalador.';
+        download.removeAttribute('href');
+        download.setAttribute('aria-disabled', 'true');
+        label.textContent = 'Preparando o instalador .exe';
+        status.textContent = 'O download será liberado aqui quando o arquivo estiver publicado e disponível. Não é necessário instalar Python ou baixar ZIP.';
       }
     })();
   </script>
