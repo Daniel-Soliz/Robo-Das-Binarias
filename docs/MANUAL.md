@@ -30,6 +30,6 @@ Payout 0.80 significa lucro de 8 numa aposta simulada de 10. Perda é -10. O app
 
 CSV com lacunas é rejeitado, inclusive pausas de mercado: importe sessões contínuas separadas. Não preencha candles artificiais para remover erros. Só informe `open_time` quando houver horário observado real da cotação. A origem é a declarada no arquivo; nenhuma cotação é buscada silenciosamente em outro serviço.
 
-Modo ao vivo e IA externa não estão disponíveis. Não existe botão que promete conectar sem integração. Explicações em português funcionam offline, sem custo e sem enviar dados.
+A leitura VISUAL da tela está disponível na guia Tela ao vivo, mas não há cotação oficial em tempo real, conexão com a IQ Option ou IA externa. Não existe botão que promete conectar sem integração. Explicações em português funcionam offline, sem custo e sem enviar dados.
 
 Desinstalar a instalação simples: apague atalho e `%LOCALAPPDATA%\Programs\DS-Trader`. Históricos permanecem na pasta separada `DS Trader`; exclua somente se quiser apagar seus estudos.
