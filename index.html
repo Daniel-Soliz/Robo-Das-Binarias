@@ -89,7 +89,7 @@
         <div class="download-area">
           <a id="download" class="download-button" href="https://github.com/Daniel-Soliz/Robo-Das-Binarias/releases" rel="noopener">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v12m0 0 4-4m-4 4-4-4M4 17v3h16v-3"/></svg>
-            <span id="download-label">Verificar instalador</span>
+            <span id="download-label">Conferir disponibilidade do instalador</span>
           </a>
           <div id="status" class="status" role="status" aria-live="polite">Verificando se o instalador Windows já está disponível...</div>
           <a id="portable" class="secondary" href="#" rel="noopener" hidden>Baixar versão portátil (.zip)</a>
@@ -139,9 +139,9 @@
         const sha = find('DS-Trader-Setup.sha256.txt');
         if (sha) { integrity.href = sha.browser_download_url; integrity.hidden = false; }
       } catch (_error) {
-        download.href = 'https://github.com/' + repo + '/releases';
-        label.textContent = 'Ver downloads disponíveis no GitHub';
-        status.textContent = 'O instalador ainda não pôde ser confirmado automaticamente. Se a compilação já terminou, ele estará na página de downloads; acompanhe os testes pelo link no rodapé.';
+        download.href = 'https://github.com/' + repo + '/actions';
+        label.textContent = 'Acompanhar compilação do instalador';
+        status.textContent = 'Ainda não há instalador .exe confirmado para baixar. Assim que o teste Windows aprovar e o arquivo for publicado, este botão mudará automaticamente para Baixar instalador.';
       }
     })();
   </script>
