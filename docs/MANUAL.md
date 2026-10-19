@@ -4,6 +4,18 @@
 
 **Portátil (opcional):** extraia `DS-Trader-Windows-x64.zip` inteiro e abra `DS-Trader/DS-Trader.exe`, sem mover o arquivo para fora da pasta. A instalação antiga por `Instalar.cmd` continua no ZIP, mas o assistente .exe é a forma recomendada. O programa não requer login.
 
+## Monitoramento visual sem fotos enviadas
+
+1. Abra sua plataforma no navegador e mantenha visível o gráfico em candles verdes/vermelhos.
+2. No DS Trader entre na guia **Tela ao vivo** e clique **Selecionar área do gráfico**.
+3. Arraste para delimitar somente o gráfico. Evite capturar login, saldo, conversas e dados pessoais. Pressione Esc para cancelar.
+4. Clique **Iniciar monitoramento**. O aplicativo captura essa região do monitor a cada cerca de 1,2 segundo e exibe a prévia e a observação visual (alta/baixa relativa ou insuficiente).
+5. Para interromper, clique em **Parar**. A captura não é automática e não envia imagens à internet.
+
+O leitor depende das cores e do desenho das velas; não é OCR de preços e não confirma horário de fechamento, ativo, payout nem vencimento da IQ Option. A vela mais recente pode estar em formação e não é usada como fechada. Nunca interpretar a observação como sinal CALL/PUT. Se as cores não forem reconhecidas, o sistema deve mostrar leitura insuficiente, não inventar um resultado. Para simulação auditável, importe dados CSV com horários comprovados.
+
+## Simulação com CSV
+
 1. Instale pelo assistente ou abra o portátil, conforme descrito acima.
 2. Clique **Exemplo sintético**. O aviso DEMONSTRAÇÃO indica dados inventados para testar o software.
 3. Em **Configurações**, veja meia largura, tolerância e prazo de reteste. A largura é preço absoluto: valores iniciais são adequados à escala do exemplo, não a todos os ativos.
