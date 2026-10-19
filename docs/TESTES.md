@@ -12,9 +12,9 @@ Cobertura: CSV válido/errado, duplicatas, ordem, lacunas, OHLC, fuso ausente, h
 
 A máquina local não oferece Windows nem sessão gráfica. **Nenhuma instalação manual Windows 10/11 foi executada localmente.**
 
-Workflow `.github/workflows/testes.yml` prepara Python 3.11.9 x64 em Windows Server 2022, executa a suíte, constrói com PyInstaller e abre o **executável real** com `--smoke-test`. O teste cria janela Tk, desenha candles, avança reprodução, pausa, completa, reabre histórico e exporta. Só produz pacote se o teste passa. Evidência será o status da execução e `smoke-result.json` dentro do artifact. Até a execução concluir, build e GUI permanecem não verificados. Passar no Windows Server não substitui instalação/interação manual em Windows 10/11.
+Workflow `.github/workflows/testes.yml` prepara Python 3.11.9 x64 em Windows Server 2022, executa a suíte, constrói com PyInstaller e abre o **executável real** com `--smoke-test`. O teste cria janela Tk, desenha candles, avança reprodução, pausa, completa, reabre histórico e exporta. Só produz pacote se o teste passa. Foi adicionado um instalador Inno Setup que instala por usuário, cria atalhos na Área de Trabalho e no Menu Iniciar e contém desinstalador. O script também confere a instalação e a abertura do .exe instalado. A release é publicada automaticamente no GitHub somente após esses testes e verificação SHA-256. Evidência será o status da execução e `smoke-result.json` dentro do artifact. Até a execução concluir, build e GUI permanecem não verificados. Passar no Windows Server não substitui instalação/interação manual em Windows 10/11.
 
-A suíte antiga `tests/` roda separadamente no trabalho `legacy`; não alegamos execução local dela (dependências antigas não instaladas aqui). O build também executa instalação por usuário, verifica atalho e abre o aplicativo instalado; desinstalação manual não é testada.
+A suíte antiga `tests/` roda separadamente no trabalho `legacy`; não alegamos execução local dela (dependências antigas não instaladas aqui). O build antigo testava instalação simples por script. O novo build usa o instalador Inno Setup; sua execução e publicação ainda precisam ser verificadas no status da execução do GitHub Actions. A desinstalação manual não é testada.
 
 A primeira execução Windows detectou uma leitura de JSON no teste sem encoding explícito. Corrigido para UTF-8; o exportador já gravava em UTF-8. O relatório final deve considerar a execução posterior à correção.
 
@@ -28,5 +28,5 @@ A primeira execução Windows detectou uma leitura de JSON no teste sem encoding
 - Arquivo completo é rejeitado se há falha; não há calendário de pregão, conversão de formatos livres ou reparo automático.
 - Interface mostra últimos 90 candles revelados, sem zoom/arraste; reprodução individual por ativo/fonte/mercado/intervalo. Para comparar ativos, execute cada seleção e exporte seus relatórios.
 - Histórico persiste; replay interrompido não retoma o cursor após reiniciar o aplicativo.
-- Pacote sem assinatura, instalação simples por script, sem MSI/assistente gráfico.
+- Instalador Inno Setup com assistente gráfico e desinstalador, mas sem assinatura digital; não é MSI. Versão portátil e instalador simples antigo continuam disponíveis.
 - Não houve avaliação de desempenho em arquivos grandes. Salvamento local ocorre a cada passo e contém o CSV original.
