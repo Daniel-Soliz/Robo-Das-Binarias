@@ -23,6 +23,6 @@ test_parameter_validation (test_core.StrategyTests.test_parameter_validation) ..
 test_pivot_confirmation_and_symmetric_signals (test_core.StrategyTests.test_pivot_confirmation_and_symmetric_signals) ... ok
 
 ----------------------------------------------------------------------
-Ran 23 tests in 0.165s
+Ran 23 tests in 0.172s
 
 OK

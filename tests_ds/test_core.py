@@ -152,7 +152,7 @@ class StorageTests(unittest.TestCase):
             backup=Path(tmp)/'backup.sqlite3';s.backup(backup);s.close()
             s=Store(backup);self.assertEqual(s.get(id),report);s.close()
             out=Path(tmp)/'report.json';export_report(report,out)
-            self.assertEqual(json.loads(out.read_text()),report)
+            self.assertEqual(json.loads(out.read_text(encoding='utf-8')),report)
             self.assertTrue(out.with_name('report_trades.csv').exists())
     def test_csv_formula_safety(self):
         from ds_trader.storage import safe_cell

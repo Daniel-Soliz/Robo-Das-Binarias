@@ -136,7 +136,8 @@ class Replay:
                     caveats='Resultado apenas das operações determináveis. Indeterminadas não equivalem a zero. Teste reservado perde independência se usado para ajustar parâmetros. Amostra pequena, seleção de parâmetros, dependência entre operações e diferenças de execução impedem alegar validação/lucratividade.')
 
 def metrics(trades):
-    counts=Counter(t['result'] for t in trades)
+    counts=Counter({k:0 for k in ('ACERTO','ERRO','EMPATE','INDETERMINADA','AGUARDANDO','ABERTA')})
+    counts.update(t['result'] for t in trades)
     balance=Decimal('0'); peak=Decimal('0'); dd=Decimal('0')
     streak=max_streak=0
     for t in trades:

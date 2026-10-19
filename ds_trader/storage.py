@@ -3,6 +3,7 @@ import csv
 import json
 import os
 import sqlite3
+from contextlib import closing
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -32,7 +33,7 @@ class Store:
     def backup(self,target):
         if Path(target).resolve()==self.path.resolve():
             raise ValueError('Escolha outro arquivo para backup')
-        with sqlite3.connect(target) as out:
+        with closing(sqlite3.connect(target)) as out:
             self.db.backup(out)
     def close(self):
         self.db.close()

@@ -14,7 +14,9 @@ A máquina local não oferece Windows nem sessão gráfica. **Nenhuma instalaç�
 
 Workflow `.github/workflows/testes.yml` prepara Python 3.11.9 x64 em Windows Server 2022, executa a suíte, constrói com PyInstaller e abre o **executável real** com `--smoke-test`. O teste cria janela Tk, desenha candles, avança reprodução, pausa, completa, reabre histórico e exporta. Só produz pacote se o teste passa. Evidência será o status da execução e `smoke-result.json` dentro do artifact. Até a execução concluir, build e GUI permanecem não verificados. Passar no Windows Server não substitui instalação/interação manual em Windows 10/11.
 
-A suíte antiga `tests/` roda separadamente no trabalho `legacy`; não alegamos execução local dela (dependências antigas não instaladas aqui). O script de instalação por usuário não tem teste automático de atalho/desinstalação nesta revisão.
+A suíte antiga `tests/` roda separadamente no trabalho `legacy`; não alegamos execução local dela (dependências antigas não instaladas aqui). O build também executa instalação por usuário, verifica atalho e abre o aplicativo instalado; desinstalação manual não é testada.
+
+A primeira execução Windows detectou uma leitura de JSON no teste sem encoding explícito. Corrigido para UTF-8; o exportador já gravava em UTF-8. O relatório final deve considerar a execução posterior à correção.
 
 ## Limitações que permanecem
 

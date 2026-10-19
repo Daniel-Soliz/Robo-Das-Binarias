@@ -15,6 +15,11 @@ Copy-Item scripts/install.ps1 release/install.ps1 -Force
 Copy-Item scripts/Instalar.cmd release/Instalar.cmd -Force
 $p = Start-Process -FilePath 'dist/DS-Trader/DS-Trader.exe' -ArgumentList '--smoke-test' -Wait -PassThru
 if ($p.ExitCode -ne 0 -or !(Test-Path smoke-result.json)) { throw 'Smoke test do executável falhou' }
+& ./release/install.ps1
+$installed = Join-Path $env:LOCALAPPDATA 'Programs/DS-Trader/DS-Trader.exe'
+$p = Start-Process -FilePath $installed -ArgumentList '--smoke-test' -Wait -PassThru
+if ($p.ExitCode -ne 0) { throw 'Aplicativo instalado falhou' }
+if (!(Test-Path (Join-Path ([Environment]::GetFolderPath('Desktop')) 'DS Trader.lnk'))) { throw 'Atalho não criado' }
 Copy-Item smoke-result.json release/smoke-result.json
 Compress-Archive -Path release/* -DestinationPath DS-Trader-Windows-x64.zip -Force
 Get-FileHash DS-Trader-Windows-x64.zip -Algorithm SHA256 | Format-List | Out-File DS-Trader-Windows-x64.sha256.txt
