@@ -30,3 +30,11 @@ A primeira execução Windows detectou uma leitura de JSON no teste sem encoding
 - Histórico persiste; replay interrompido não retoma o cursor após reiniciar o aplicativo.
 - Instalador Inno Setup com assistente gráfico e desinstalador, mas sem assinatura digital; não é MSI. Versão portátil e instalador simples antigo continuam disponíveis.
 - Não houve avaliação de desempenho em arquivos grandes. Salvamento local ocorre a cada passo e contém o CSV original.
+
+## Evolução posterior — leitor visual de tela
+
+Foram adicionados `tests_ds/test_live_screen.py` com seis testes unitários para geometria, configuração, imagem em branco e candles coloridos de alta/baixa. Eles verificam também que o modo visual não fornece preço de mercado nem sinal de ordens. O `scripts/gui_smoke.py` agora verifica a existência da aba e a ausência de captura automática.
+
+**Status:** as alterações foram gravadas no GitHub, mas NÃO há evidência confirmada neste relatório de que o novo CI Windows tenha ficado verde ou que o instalador atualizado tenha sido publicado. A captura real de tela no Windows, com diferentes plataformas, resoluções e tema de cores, NÃO foi validada. Nenhuma alegação de acerto financeiro pode ser baseada no modo visual.
+
+A fila de frames tem capacidade 1, descartando imagens antigas para reduzir atraso; a captura é executada em thread dedicada. Erros interrompem a captura com mensagem em tela. Não são enviados pixels ou credenciais para servidores por este modo. A leitura é aproximada, pode falhar em temas distintos, sobreposições, várias janelas, monitores e DPI.
