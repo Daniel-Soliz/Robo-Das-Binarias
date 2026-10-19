@@ -37,3 +37,11 @@ CSV local funciona sem conta ou permissões de rede. Usuário fornece dados que 
 Sem IA externa na V1: custo zero de API e nenhum dado enviado. Uma extensão futura precisaria tela explícita de provedor, conteúdo enviado e custo, chave em cofre do Windows e falha isolada do motor. Não há esse provedor para habilitar agora.
 
 Configuração e histórico são locais, não criptografados; não armazenam senha. Backup/relatório contém cotações e estudos do usuário. Sem servidor, telemetria ou execução de ordens. O executável inclui Python/Tk; scripts de captura e adaptador não oficial não são importados pelo caminho normal.
+
+## Nova implementação: leitura visual local (integração posterior)
+
+Revisão da separação de responsabilidades: o capturador antigo `data_sources/screen_source.py` depende de OpenCV, OCR/Tesseract e identificação de ativo/timeframe, gerando apenas preços relativos; ele continua no projeto LEGADO e **não é instalado como motor de ordens nem usado para gerar entradas simuladas**.
+
+A nova guia `Tela ao vivo` usa `ds_trader/live_ui.py` (seleção e prévia Tk) e `ds_trader/live_screen.py` (mss + Pillow, processamento em thread). A captura só é iniciada por escolha explícita da área e clique do usuário. A interface recebe frames por fila limitada, sem salvar/transmitir os pixels. O algoritmo busca corpos verde/vermelho e descreve somente variação visual relativa; exclui o candle mais à direita por poder estar aberto. `Assessment.is_market_quote=False` e `Assessment.trading_signal=False` são fixos. Não há obtenção de ticks, pagamento ou horário real a partir da tela.
+
+O modo histórico mantém suas regras, dados verificáveis e armazenamento próprios. Não há mistura automática entre capturas visuais e valores de simulação. O instalador Windows passou a incluir `mss` e `Pillow` em versões fixadas. A interface no Windows, permissões de captura, multi-monitor, DPI e leitura sobre gráficos reais ainda exigem validação manual no equipamento do usuário.
