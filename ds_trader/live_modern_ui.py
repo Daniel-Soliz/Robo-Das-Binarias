@@ -12,7 +12,7 @@ from tkinter import ttk, messagebox
 
 from ds_trader.live_ui import RegionPicker
 from ds_trader.live_screen import ScreenMonitor
-from ds_trader.live_presentation import presentation_for
+from ds_trader.live_presentation import presentation_for, screen_region_is_obscured
 
 
 BG = "#08111f"
@@ -240,13 +240,9 @@ class LiveScreenTab:
         """Impede capturar o próprio DS Trader em vez da plataforma."""
         if self.region is None or not self.root.winfo_viewable():
             return False
-        ax, ay = self.region.left, self.region.top
-        aw, ah = self.region.width, self.region.height
-        bx, by = self.root.winfo_rootx(), self.root.winfo_rooty()
-        bw, bh = self.root.winfo_width(), self.root.winfo_height()
-        width = max(0, min(ax + aw, bx + bw) - max(ax, bx))
-        height = max(0, min(ay + ah, by + bh) - max(ay, by))
-        return width * height > aw * ah * .08
+        window = (self.root.winfo_rootx(), self.root.winfo_rooty(),
+                  self.root.winfo_width(), self.root.winfo_height())
+        return screen_region_is_obscured(self.region, window)
 
     def _restore_window(self):
         self.root.deiconify()
