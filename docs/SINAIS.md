@@ -58,7 +58,9 @@ Referencias de definicoes:
 3. Clique `Iniciar monitoramento`. O app le pixels locais a cada 1,2 s;
    exige pelo menos **26 objetos** consistentes em espacamento e descarta
    o grupo mais a direita (que pode ser vela em formacao).
-4. Exibe `PROXIMA VELA: CALL / PUT / AGUARDAR` como **HIPOTESE VISUAL
+4. Aguarda pelo menos **3 quadros consecutivos geometricamente estaveis**;
+   ao alterar recorte, escala ou quantidade detectada, mostra AGUARDAR de novo.
+5. Exibe `PROXIMA VELA: CALL / PUT / AGUARDAR` como **HIPOTESE VISUAL
    NAO VALIDADA**, os motivos e linhas LTA/LTB relativas desenhadas na previa
    quando possivel.
 5. Clique `Parar`. Imagens nao sao gravadas ou transmitidas.
