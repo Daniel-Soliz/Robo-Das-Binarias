@@ -62,7 +62,7 @@ def prepare(source: Path, target: Path) -> None:
     files = {name: unique(source, name) for name in FILES}
     smoke = unique(source, "smoke-result.json")
     status = json.loads(smoke.read_text(encoding="utf-8"))
-    for key in ("gui", "persistence", "export"):
+    for key in ("gui", "persistence", "export", "forex_tab"):
         if status.get(key) != "passed":
             raise RuntimeError(f"Smoke test nao aprovado: {key} = {status.get(key)!r}")
     print("Smoke test Windows: GUI, persistencia e exportacao aprovados.")
