@@ -123,7 +123,7 @@ class ScreenAnalysisTests(unittest.TestCase):
         result = assess(sample(upward=True))
         self.assertFalse(hasattr(result, "market_price"))
         self.assertFalse(hasattr(result, "expiry"))
-        self.assertIn("NAO cotacoes", result.explanation)
+        self.assertIn("Nao existe hipotese segura", result.explanation)
 
 
 if __name__ == "__main__":
