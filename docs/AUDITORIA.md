@@ -33,3 +33,14 @@
 - Testes de detecção com gravações ou imagens consentidas de gráficos reais, várias resoluções e cores, medindo falsos positivos/negativos.
 - Para decisões vinculadas a uma operação, usar **fonte autorizada** de ticks com timestamps, preço de entrada/saída, expiração e payout; não inferir liquidação pela posição dos pixels.
 - Estudo de zonas e alertas visuais não operacionais após validação do reconhecimento; nenhuma automação de ordens.
+
+## Extensao v1.1 — dados Forex de fornecedor externo
+
+- **Novo requisito de produto:** analisar pares fiat Forex durante sessao regular sem usar capturas de tela.
+- **Provedor inicial:** Twelve Data Forex `GET /time_series`, HTTPS, autenticacao por chave criada pelo usuario, `timezone=UTC`, `1min/5min/15min`. A chave NAO e enviada no chat nem persistida no SQLite ou nos relatorios. A API exige chave, internet e permissao do plano; pode cobrar. A requisicao do provedor inclui chave na URL conforme documentacao, por isso pode ser visivel ao provedor e infraestrutura HTTP.
+- **Analise:** candles fechados, validacao de OHLC, intervalo, duplicatas, futuro, lacunas, frescor, tendencia descritiva SMA9/SMA21 e pivos confirmados. A regra da sessao NY domingo 17h05 a sexta 16h59 e apenas referencia de horario Forex, sujeita a feriados e diferencas da fonte. Fora do horario, dados atrasados e lacunas nao sao classificados como tendencia de mercado atual.
+- **Limites:** atualizacao minima a cada 60 s; padrao 120 s, custo estimado ate 720 consultas/dia para um par continuamente, sujeito as regras reais do fornecedor. NAO e streaming de ticks. Sem credenciais o app nao acessa a fonte; nao inventa preco em modo offline. Precos agregados da Twelve Data podem diferir dos precos/OTC da IQ Option; nao ha integracao de conta/ordens/payout.
+- **Arquivos:** `ds_trader/forex_live.py`, `ds_trader/forex_ui.py`, `tests_ds/test_forex_live.py`; `requirements-runtime.txt` inclui `tzdata` para fusos IANA no Windows.
+- **Validacao exigida:** conferir CI Windows/Linux verde para novo commit, instalador 1.1 com `forex_tab` no smoke-test, obtencao de chave valida da Twelve Data de acordo com seu plano (NAO compartilhar em chat), teste manual com varias moedas e periodos. Nao alegar leitura real validada antes de testar com provedor em mercado aberto.
+
+Referencias: https://twelvedata.com/docs ; https://support.twelvedata.com/en/articles/12520817-forex-api-v2 ; https://www.oanda.com/us-en/trading/hours-of-operation/
