@@ -16,6 +16,7 @@ import json
 import math
 import re
 import time
+from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 BASE_URL = "https://api.twelvedata.com/time_series"
 PAIRS = ("EUR/USD", "GBP/USD", "USD/JPY", "AUD/USD", "USD/CAD", "USD/CHF", "EUR/JPY", "EUR/GBP", "NZD/USD")
@@ -71,6 +72,29 @@ def _price(value):
     return price
 
 
+def reference_forex_open(now: datetime) -> bool:
+    """Sessao Forex indicativa: Nova York domingo 17:05 a sexta 16:59.
+
+    Baseada em referencia de horas de mercado OANDA, NAO em horario da Twelve
+    Data e NAO confirma que ativo/conta da corretora esteja negociavel.
+    """
+    if now.tzinfo is None:
+        raise ValueError("Relogio com fuso horario obrigatorio")
+    try:
+        ny=now.astimezone(ZoneInfo("America/New_York"))
+    except ZoneInfoNotFoundError as exc:
+        raise FeedError("Base de fusos horaros indisponivel: instalar tzdata") from exc
+    weekday=ny.weekday()
+    minute=ny.hour*60+ny.minute
+    if weekday==5:
+        return False
+    if weekday==6:
+        return minute>=17*60+5
+    if weekday==4:
+        return minute<16*60+59
+    return minute<16*60+59 or minute>=17*60+5
+
+
 def parse_payload(payload, pair: str, interval: str, *, now=None):
     """Rejeita resposta inconsistente e vela aberta. Nunca fabrica barras em lacunas."""
     if pair not in PAIRS or interval not in INTERVALS:
@@ -121,6 +145,8 @@ def parse_payload(payload, pair: str, interval: str, *, now=None):
         raise FeedError("Cotacao do fornecedor veio com horario futuro")
     # Dados mais antigos que 3 intervalos nunca sao rotulados como atuais.
     status = "ATUALIZADO" if age <= max(3*seconds, 180) else "ATRASADO / MERCADO SEM NOVAS COTACOES"
+    if status=="ATUALIZADO" and not reference_forex_open(now):
+        status="FORA DO HORARIO REGULAR FOREX (REFERENCIA NOVA YORK)"
     # Descarta qualquer historia anterior a lacuna, inclusive fim de semana.
     start = len(candles)-1
     while start > 0 and (candles[start].opened-candles[start-1].opened).total_seconds()==seconds:
