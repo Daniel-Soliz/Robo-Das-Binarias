@@ -4,6 +4,7 @@ from tkinter import ttk, messagebox
 from datetime import datetime, timezone
 from queue import Empty
 from ds_trader.forex_live import PAIRS, INTERVALS, ForexWatcher
+from ds_trader.next_candle import evaluate_next
 
 class ForexMarketTab:
     def __init__(self, parent, root):
@@ -12,6 +13,7 @@ class ForexMarketTab:
         self.timer=None
         self.running=False
         self.view=None
+        self.last_opinion=None
         self.pair=tk.StringVar(value="EUR/USD")
         self.interval=tk.StringVar(value="1min")
         self.refresh=tk.StringVar(value="120")
@@ -48,6 +50,13 @@ class ForexMarketTab:
         self.stop_btn.pack(side="left",padx=8)
         self.status=tk.StringVar(value="DESCONECTADO — insira sua chave de API para receber candles reais.")
         ttk.Label(parent,textvariable=self.status,foreground="#985600",wraplength=1030).pack(anchor="w",padx=15)
+        self.next_candle=tk.StringVar(value="PROXIMA VELA: AGUARDAR — sem candles recentes")
+        ttk.Label(parent,textvariable=self.next_candle,
+                  font=("Segoe UI",14,"bold"),foreground="#146f9f",
+                  wraplength=1010).pack(anchor="w",padx=15,pady=(5,4))
+        self.pattern_notes=tk.StringVar(value="Padroes / LTA / LTB: aguardando candles.")
+        ttk.Label(parent,textvariable=self.pattern_notes,
+                  wraplength=1010).pack(anchor="w",padx=15,pady=(0,4))
         self.context=tk.StringVar(value="Aguardando dados do fornecedor. Nenhuma leitura do mercado atual esta disponivel.")
         ttk.Label(parent,textvariable=self.context,wraplength=1040,justify="left").pack(anchor="w",padx=15,pady=(4,6))
         self.prices=tk.StringVar(value="Suporte/resistencia: aguardando cotações verificadas")
@@ -81,6 +90,8 @@ class ForexMarketTab:
         self.context.set("Aguardando resposta da Twelve Data...")
         self.prices.set("Aguardando candles fechados...")
         self.canvas.delete("all")
+        self.last_opinion=None
+        self.next_candle.set("PROXIMA VELA: AGUARDAR — aguardando fonte de mercado")
         self.status.set("CONECTANDO — consultando API de dados, sem executar ordens.")
         self.watcher.start()
         self.poll()
@@ -93,6 +104,9 @@ class ForexMarketTab:
                 kind,value=self.watcher.results.get_nowait()
                 if kind=="error":
                     self.view=None
+                    self.last_opinion=None
+                    self.next_candle.set("PROXIMA VELA: AGUARDAR — fornecedor indisponivel")
+                    self.pattern_notes.set("Sem padroes ate nova confirmacao.")
                     self.canvas.delete("all")
                     self.status.set("SEM COTACAO VERIFICADA — "+value)
                     self.context.set("Sem analise enquanto o fornecedor estiver indisponivel.")
@@ -104,6 +118,24 @@ class ForexMarketTab:
                         f"ultimo candle fechado: {value.last_closed_at.strftime('%d/%m/%Y %H:%M UTC')} • "
                         f"atraso observado: {value.age_seconds:.0f} s"
                     )
+                    if value.status == "ATUALIZADO":
+                        self.last_opinion = evaluate_next(value.candles,source="api",closed_confirmed=True)
+                        # M1 exige latencia minima. Sem cotacao quase imediata nao há "proxima vela".
+                        max_signal_age=min(60,max(20,INTERVALS[value.interval]*.12))
+                        can_reference_next=value.age_seconds <= max_signal_age
+                        side=self.last_opinion.side if can_reference_next else "AGUARDAR"
+                        late="" if can_reference_next else " (ultima vela fechou ha tempo demais)"
+                        self.next_candle.set(
+                            f"PROXIMA VELA: {side} — hipotese educacional, NAO e entrada IQ Option"+late)
+                        self.pattern_notes.set(
+                            "Padroes: "+(", ".join(self.last_opinion.patterns) or "nenhum")+
+                            " | LTA: "+("sim" if self.last_opinion.lta else "nao")+
+                            " | LTB: "+("sim" if self.last_opinion.ltb else "nao")+
+                            " | Motivos: "+" ".join(self.last_opinion.reasons[-3:]))
+                    else:
+                        self.last_opinion=None
+                        self.next_candle.set("PROXIMA VELA: AGUARDAR — cotacao atrasada/mercado fechado")
+                        self.pattern_notes.set("Nao emitir hipotese com dados sem frescor.")
                     self.context.set(value.summary)
                     support = f"{value.support:.6f}" if value.support is not None else "nao confirmado"
                     resistance = f"{value.resistance:.6f}" if value.resistance is not None else "nao confirmada"
@@ -116,6 +148,8 @@ class ForexMarketTab:
             limit=max(3*INTERVALS[self.view.interval],180)
             if elapsed>limit:
                 self.view=None
+                self.last_opinion=None
+                self.next_candle.set("PROXIMA VELA: AGUARDAR — dados vencidos")
                 self.canvas.delete("all")
                 self.status.set("ATRASADO — nenhuma cotacao recente confirmada")
                 self.context.set("Exibicao suspensa ate receber novos candles fechados do fornecedor.")
@@ -147,6 +181,20 @@ class ForexMarketTab:
             for price,shade in ((self.view.support,"#3686e7"),(self.view.resistance,"#d2a65e")):
                 if price is not None and lo<=price<=hi:
                     self.canvas.create_line(3,y(price),w-96,y(price),fill=shade,dash=(6,3),width=2)
+        # Linhas de tendencia pelos dois ultimos fundos/topos confirmados,
+        # projeção apenas grafica, sem extrapolar rentabilidade.
+        if self.last_opinion and self.view.status=="ATUALIZADO":
+            for line,color in ((self.last_opinion.lta,"#36b5f4"),
+                               (self.last_opinion.ltb,"#f7aa60")):
+                if line is None:
+                    continue
+                slope=line[1]-line[0]
+                old=line[1]-slope*min(len(bars)-1,18)
+                x_left=10+(max(0,len(bars)-19)+.5)*dx
+                x_right=10+(len(bars)-.5)*dx
+                if lo<=old<=hi or lo<=line[1]<=hi:
+                    self.canvas.create_line(x_left,y(old),x_right,y(line[1]),
+                                            fill=color,dash=(5,3),width=2)
         self.canvas.create_text(10,h-15,text=bars[0].opened.strftime("%d/%m %H:%M UTC"),
                                 fill="#b0c5d9",anchor="w")
         self.canvas.create_text(w-100,h-15,text=bars[-1].opened.strftime("%H:%M UTC"),
@@ -167,6 +215,9 @@ class ForexMarketTab:
             box.configure(state="readonly")
         self.key_entry.configure(state="normal")
         self.view=None
+        self.last_opinion=None
+        self.next_candle.set("PROXIMA VELA: AGUARDAR — desconectado")
+        self.pattern_notes.set("Padroes / LTA / LTB: aguardando candles.")
         self.canvas.delete("all")
         self.status.set("DESCONECTADO — consultas interrompidas.")
         self.context.set("Sem leitura atual. Para voltar a consultar, informe a chave novamente.")
