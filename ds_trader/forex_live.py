@@ -34,10 +34,6 @@ class MarketCandle:
     low: float
     close: float
 
-    @property
-    def ends(self):
-        return self.opened + timedelta(seconds=self.interval_seconds) if hasattr(self, "interval_seconds") else None
-
 @dataclass(frozen=True)
 class MarketView:
     pair: str
