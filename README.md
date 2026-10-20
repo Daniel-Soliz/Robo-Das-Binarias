@@ -4,6 +4,16 @@ Aplicativo desktop em português para estudar **rompimento e reteste**. Importa 
 
 O modo de tela detecta geometricamente algumas velas verde/vermelho, exibe a região selecionada e descreve somente movimento **visual relativo**. Não consegue obter preços, horários de negociação ou vencimentos oficiais dos pixels; apenas mostra vieses condicionais CALL/PUT/AGUARDAR rotulados como não validados; não alimenta o simulador como se fossem cotações reais.
 
+## Interface moderna DS Trader 1.3
+
+A guia **Tela ao vivo** ganhou um painel escuro de duas colunas: **previsualizacao do grafico a esquerda**, e **CALL, PUT ou AGUARDAR com padroes, LTA/LTB e explicacao a direita**. O tema das outras abas tambem foi modernizado, mantendo o software nativo do Windows sem exigir nova biblioteca de interface.
+
+Ao clicar **Selecionar grafico**, o DS Trader oculta sua janela temporariamente. Se, durante a analise, sua janela cobrir a regiao do navegador monitorada, o programa mostra **AGUARDAR — GRAFICO ENCOBERTO**, pois nao consegue enxergar atraves de outras janelas. Use navegador e DS Trader lado a lado ou em monitores diferentes.
+
+O periodo M1/M5/M15 no painel e **informado manualmente**, nao reconhecido automaticamente. O leitor visual nao confirma o momento exato de fechamento da proxima vela, e as hipoteses CALL/PUT **ainda nao sao validadas para operacao real**.
+
+Consulte [guia do novo painel](docs/INTERFACE.md), [regras tecnicas](docs/SINAIS.md) e [testes](docs/TESTES.md).
+
 ## Hipoteses CALL / PUT / AGUARDAR e leitura de padroes (v1.2)
 
 Na aba **Tela ao vivo**, o DS Trader agora pode descrever engolfo, doji,
