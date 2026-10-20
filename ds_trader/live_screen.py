@@ -51,6 +51,10 @@ class Assessment:
     patterns: tuple[str, ...] = ()
     structures: tuple[str, ...] = ()
     valid_roi: bool = False
+    candle_xs: tuple[int, ...] = ()
+    model_width: int = 1
+    lta: tuple[float, float] | None = None
+    ltb: tuple[float, float] | None = None
 
 
 def detect_visual_candles(image):
@@ -148,10 +152,13 @@ def assess(image, captured_at=None):
     when = captured_at or datetime.now(timezone.utc).isoformat()
     detected=detect_visual_candles(image)
     completed=detected[:-1]  # vela mais à direita pode estar em formação
-    roi_ok, why = _roi_quality(detected, min(image.width,1200))
+    scaled=image.copy()
+    scaled.thumbnail((1200,700))
+    roi_ok, why = _roi_quality(detected, scaled.width)
     bias="AGUARDAR"
     patterns=()
     structures=()
+    lta=ltb=None
     if not roi_ok:
         movement="Leitura insuficiente"
         explanation=(f"{len(detected)} possiveis corpos coloridos identificados. "
@@ -165,6 +172,7 @@ def assess(image, captured_at=None):
                   "Movimento visual indefinido")
         # Modelo aceita *velas estimadas*, e nunca afirma que são cotações da IQ Option.
         opinion=evaluate_next(completed,source="screen",closed_confirmed=True)
+        lta,ltb=opinion.lta,opinion.ltb
         bias=opinion.side
         patterns=opinion.patterns
         structures=tuple(x for x,found in (
@@ -180,7 +188,36 @@ def assess(image, captured_at=None):
                      " ATENCAO: hipotese apenas visual, sem comprovacao do fechamento, "
                      "hora da proxima vela, cotacao ou vencimento; NAO e sinal validado.")
     return Assessment(when,len(detected),len(completed),movement,explanation,
-                      bias=bias,patterns=patterns,structures=structures,valid_roi=roi_ok)
+                      bias=bias,patterns=patterns,structures=structures,valid_roi=roi_ok,
+                      candle_xs=tuple(c.x for c in completed),model_width=scaled.width,
+                      lta=lta,ltb=ltb)
+
+
+def annotate_preview(frame, result):
+    """Linhas relativas de LTA/LTB na previa; nao altera a captura original."""
+    if not result.valid_roi or len(result.candle_xs)<15:
+        return frame
+    from PIL import ImageDraw
+    canvas=frame.copy()
+    draw=ImageDraw.Draw(canvas)
+    xs=result.candle_xs
+    scale_x=canvas.width/max(1,result.model_width)
+    for line,color,name in ((result.lta,"#38c6fa","LTA"),
+                            (result.ltb,"#ffb166","LTB")):
+        if not line:
+            continue
+        n=min(14,len(xs)-1)
+        slope=line[1]-line[0]
+        earlier=line[1]-n*slope
+        start=(int(xs[-1-n]*scale_x),round((1-earlier)*canvas.height))
+        finish=(int(xs[-1]*scale_x),round((1-line[1])*canvas.height))
+        if not all(-canvas.height<=v<=canvas.height*2 for v in (start[1],finish[1])):
+            continue
+        draw.line((start,finish),fill=color,width=3)
+        draw.text((max(1,finish[0]-38),max(2,min(canvas.height-18,finish[1]-20))),
+                  name,fill=color)
+    return canvas
+
 
 
 class ScreenMonitor:
@@ -240,7 +277,8 @@ class ScreenMonitor:
                     shot = capture.grab(r.mss_rect())
                     frame = Image.frombytes("RGB", shot.size, shot.rgb)
                     result = assess(frame)
-                    frame.thumbnail((680, 380))
+                    frame.thumbnail((1050, 590))
+                    frame=annotate_preview(frame,result)
                     self._emit((result, frame))
                     self._stop.wait(max(0, self.interval_seconds - (time.monotonic() - began)))
         except Exception as exc:
