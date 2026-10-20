@@ -7,8 +7,9 @@ from ds_trader.live_screen import Region, ScreenMonitor
 
 class RegionPicker:
     """Selecao visual por arraste na area do desktop (sem guardar imagem)."""
-    def __init__(self, master, on_select):
+    def __init__(self, master, on_select, on_cancel=None):
         self.on_select = on_select
+        self.on_cancel = on_cancel
         self.window = tk.Toplevel(master)
         self.window.title("Selecione a area do grafico")
         self.window.overrideredirect(True)
@@ -69,15 +70,17 @@ class RegionPicker:
                                    parent=self.window)
             self.first = None
             return
-        self.cancel()
+        self.cancel(notify=False)
         self.on_select(selection)
 
-    def cancel(self):
+    def cancel(self, notify=True):
         try:
             self.window.grab_release()
         except tk.TclError:
             pass
         self.window.destroy()
+        if notify and self.on_cancel is not None:
+            self.on_cancel()
 
 
 class LiveScreenTab:
