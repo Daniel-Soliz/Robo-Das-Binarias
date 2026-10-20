@@ -1,7 +1,7 @@
 """Monitoramento visual LOCAL da tela. Nao fornece preco, horario de mercado nem sinais de ordens."""
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from datetime import datetime, timezone
 from queue import Empty, Full, Queue
 import threading
@@ -234,6 +234,8 @@ class ScreenMonitor:
         self.results = Queue(maxsize=1)
         self._stop = threading.Event()
         self._thread = None
+        self._last_signature = None
+        self._stable_reads = 0
 
     @property
     def running(self):
@@ -243,6 +245,8 @@ class ScreenMonitor:
         if self.running:
             return
         self._stop.clear()
+        self._stable_reads=0
+        self._last_signature=None
         self._thread = threading.Thread(target=self._run, daemon=True, name="ds-screen-read-only")
         self._thread.start()
 
@@ -277,6 +281,25 @@ class ScreenMonitor:
                     shot = capture.grab(r.mss_rect())
                     frame = Image.frombytes("RGB", shot.size, shot.rgb)
                     result = assess(frame)
+                    if result.valid_roi and len(result.candle_xs)>5:
+                        gaps=[b-a for a,b in zip(result.candle_xs,result.candle_xs[1:])]
+                        step=median(gaps)
+                        signature=(result.detected,round(step),
+                                   round(result.candle_xs[-1]/max(1,step/2)))
+                        if signature==self._last_signature:
+                            self._stable_reads+=1
+                        else:
+                            self._last_signature=signature
+                            self._stable_reads=1
+                        if self._stable_reads<3:
+                            result=replace(
+                                result,bias="AGUARDAR",
+                                explanation=result.explanation+
+                                " Aguardando tres leituras geometricamente estaveis."
+                            )
+                    else:
+                        self._last_signature=None
+                        self._stable_reads=0
                     frame.thumbnail((1050, 590))
                     frame=annotate_preview(frame,result)
                     self._emit((result, frame))
