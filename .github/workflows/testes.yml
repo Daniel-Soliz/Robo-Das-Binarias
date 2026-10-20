@@ -88,7 +88,7 @@ jobs:
           test -n "$GH_TOKEN" || { echo "::error::GITHUB_TOKEN nao disponivel"; exit 1; }
           gh --version
           echo "Repositorio: $GH_REPO"
-          tag="v1.0.0-build-${GITHUB_SHA:0:8}"
+          tag="v1.1.0-build-${GITHUB_SHA:0:8}"
           files=(
             release-ready/DS-Trader-Setup.exe
             release-ready/DS-Trader-Setup.sha256.txt
@@ -101,7 +101,7 @@ jobs:
           else
             gh release create "$tag" "${files[@]}" \
               --target "$GITHUB_SHA" \
-              --title "DS Trader 1.0.0 - Windows x64" \
+              --title "DS Trader 1.1.0 - Windows x64" \
               --latest \
               --notes "Instalador Windows com assistente, atalho na Area de Trabalho e desinstalador. Inclui monitoramento visual local e simulacao de dados historicos. Nao envia ordens; nao e conectado a IQ Option. Sem assinatura digital: nao desative protecoes do Windows."
           fi
