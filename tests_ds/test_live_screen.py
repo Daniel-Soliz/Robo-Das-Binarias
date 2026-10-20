@@ -93,6 +93,29 @@ class ScreenAnalysisTests(unittest.TestCase):
         self.assertEqual(result.bias,"AGUARDAR")
         self.assertFalse(result.valid_roi)
 
+    def test_monitor_requires_three_stable_frames_before_provisional_bias(self):
+        image=sample(upward=True,count=36,gap=20)
+        class Capture:
+            monitors=[dict(left=0,top=0,width=1200,height=800)]
+            def __enter__(self):return self
+            def __exit__(self,*_args):return False
+            def grab(self,_rect):
+                return SimpleNamespace(size=image.size,rgb=image.tobytes())
+        monitor=ScreenMonitor(Region(0,0,750,330),interval_seconds=0.5)
+        with patch.dict(sys.modules,{"mss":SimpleNamespace(mss=lambda:Capture())}):
+            try:
+                monitor.start()
+                first,_=monitor.results.get(timeout=6)
+                second,_=monitor.results.get(timeout=6)
+                third,_=monitor.results.get(timeout=6)
+                self.assertEqual(first.bias,"AGUARDAR")
+                self.assertEqual(second.bias,"AGUARDAR")
+                self.assertTrue(third.valid_roi)
+                self.assertGreaterEqual(monitor._stable_reads,3)
+                self.assertFalse(third.trading_signal)
+            finally:
+                monitor.stop()
+
     def test_continuous_capture_with_fake_desktop_stays_local(self):
         image = sample(upward=True)
 
