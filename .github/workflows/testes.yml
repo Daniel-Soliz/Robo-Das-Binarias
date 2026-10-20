@@ -101,7 +101,7 @@ jobs:
           else
             gh release create "$tag" "${files[@]}" \
               --target "$GITHUB_SHA" \
-              --title "DS Trader 1.2.0 - Windows x64" \
+              --title "DS Trader 1.3.0 - Windows x64" \
               --latest \
               --notes "Instalador Windows com assistente, atalho na Area de Trabalho e desinstalador. Inclui monitoramento visual local e simulacao de dados historicos. Nao envia ordens; nao e conectado a IQ Option. Sem assinatura digital: nao desative protecoes do Windows."
           fi
