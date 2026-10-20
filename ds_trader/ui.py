@@ -220,4 +220,4 @@ def main():
             ctypes.windll.shcore.SetProcessDpiAwareness(2)
         except (AttributeError, OSError):
             pass
-    root=tk.Tk();App(root);root.mainloop()
+    root=tk.Tk();app=App(root);app.book.select(app.live_tab);root.mainloop()
