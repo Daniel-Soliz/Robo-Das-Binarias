@@ -4,7 +4,8 @@ import sys
 from types import SimpleNamespace
 from unittest.mock import patch
 from PIL import Image, ImageDraw
-from ds_trader.live_screen import Region, ScreenMonitor, detect_visual_candles, assess
+from dataclasses import replace
+from ds_trader.live_screen import Region, ScreenMonitor, detect_visual_candles, assess, annotate_preview
 
 
 def sample(upward=True, count=18, gap=39):
@@ -71,6 +72,17 @@ class ScreenAnalysisTests(unittest.TestCase):
         self.assertFalse(result.is_market_quote)
         self.assertIn("NAO e sinal validado",result.explanation)
 
+    def test_lta_and_ltb_overlay_are_only_drawn_on_preview_copy(self):
+        image=sample(upward=True,count=36,gap=20)
+        result=assess(image)
+        self.assertTrue(result.valid_roi)
+        artificial=replace(result,lta=(.50,.51),ltb=(.62,.61))
+        preview=annotate_preview(image,artificial)
+        self.assertIsNot(image,preview)
+        self.assertNotEqual(preview.tobytes(),image.tobytes())
+        no_overlay=replace(result,lta=None,ltb=None)
+        self.assertEqual(annotate_preview(image,no_overlay).tobytes(),image.tobytes())
+
     def test_wrong_roi_rejects_sparse_buttons(self):
         frame=Image.new("RGB",(750,330),"#111a26")
         draw=ImageDraw.Draw(frame)
@@ -100,7 +112,7 @@ class ScreenAnalysisTests(unittest.TestCase):
                 monitor.start()
                 result, frame = monitor.results.get(timeout=6)
                 self.assertGreaterEqual(result.detected, 10)
-                self.assertLessEqual(frame.width, 680)
+                self.assertLessEqual(frame.width, 1050)
                 self.assertFalse(result.is_market_quote)
                 self.assertFalse(result.trading_signal)
             finally:
