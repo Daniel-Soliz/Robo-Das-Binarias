@@ -178,6 +178,11 @@ class LiveScreenTab:
                     "PROXIMA VELA: " + result.bias +
                     " — HIPOTESE VISUAL NAO VALIDADA, NAO E ORDEM"
                 )
+                self.bias_label.configure(foreground={
+                    "CALL":"#147b63",
+                    "PUT":"#ae454a",
+                    "AGUARDAR":"#8f6c1a"
+                }.get(result.bias,"#8f6c1a"))
                 self.structures.set(
                     "Padroes: " + (", ".join(result.patterns) or "nao reconhecidos") +
                     " | Estruturas: " + (", ".join(result.structures) or "insuficientes")
