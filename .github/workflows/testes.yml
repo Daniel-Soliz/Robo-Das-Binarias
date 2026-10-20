@@ -76,7 +76,7 @@ jobs:
         run: |
           set -euo pipefail
           echo 'Arquivos recebidos do Windows:'
-          find downloads -maxdepth 5 -type f -printf '%p (%s bytes)\\n'
+          find downloads -maxdepth 5 -type f -printf '%p (%s bytes)\n'
           python scripts/prepare_release.py downloads release-ready
       - name: Publicar arquivos EXE e ZIP no GitHub Releases
         shell: bash
@@ -99,10 +99,10 @@ jobs:
             gh release upload "$tag" "${files[@]}" --clobber
             gh release edit "$tag" --latest
           else
-            gh release create "$tag" "${files[@]}" \\
-              --target "$GITHUB_SHA" \\
-              --title "DS Trader 1.0.0 - Windows x64" \\
-              --latest \\
+            gh release create "$tag" "${files[@]}" \
+              --target "$GITHUB_SHA" \
+              --title "DS Trader 1.0.0 - Windows x64" \
+              --latest \
               --notes "Instalador Windows com assistente, atalho na Area de Trabalho e desinstalador. Inclui monitoramento visual local e simulacao de dados historicos. Nao envia ordens; nao e conectado a IQ Option. Sem assinatura digital: nao desative protecoes do Windows."
           fi
           gh release view "$tag" --json url,assets --jq '.url, (.assets[].name)'
