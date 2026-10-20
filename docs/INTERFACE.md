@@ -2,7 +2,7 @@
 
 ## Alterações
 
-A guia Tela ao vivo foi redesenhada no módulo ds_trader/live_modern_ui.py.
+O aplicativo abre diretamente na guia Tela ao vivo. Essa guia foi redesenhada no módulo ds_trader/live_modern_ui.py.
 O gráfico capturado aparece à esquerda; à direita ficam CALL, PUT ou AGUARDAR,
 padrões, estruturas LTA/LTB e explicação. O tema escuro foi aplicado ao
 desktop pelo módulo ds_trader/theme.py usando o Tkinter/ttk nativo.
