@@ -12,6 +12,7 @@ hipotese **CALL / PUT / AGUARDAR** com explicacoes. A leitura da tela e
 **EXPERIMENTAL**: nao confirma por si o fechamento exato do candle e
 nao constitui recomendacao de entrada na IQ Option. Recortes irregulares
 ou com menos de 26 possiveis candles resultam em **AGUARDAR**.
+A captura exige 3 quadros geometricamente estaveis antes de mostrar vies direcional.
 LTA/LTB sao desenhadas na previa, quando detectadas.
 
 A aba **Forex em tempo real**, se houver chave de API e cotacoes atuais,
