@@ -1,5 +1,6 @@
 """Regras de proxima vela: abstencao, padroes, LTA/LTB, sem futuro ou estatisticas falsas."""
 import unittest
+import math
 from dataclasses import dataclass
 from ds_trader.next_candle import evaluate_next, _pivots, _line, _patterns
 
@@ -52,6 +53,29 @@ class StructuralRules(unittest.TestCase):
         self.assertIn("Engolfo de baixa",_patterns([up,down]))
         doji=Bar(1.1000,1.1010,1.0990,1.10001)
         self.assertIn("Doji / indecisao",_patterns([b,doji]))
+
+    def test_deterministic_directional_hypotheses_only_with_confluence(self):
+        candles=[]
+        for i in range(33):
+            op=95 + .02*i + .16*math.sin(i*.82)
+            cl=op + (.045 if i%2 else -.045)
+            candles.append(Bar(op,max(op,cl)+.1,min(op,cl)-.1,cl))
+        candles.extend((
+            Bar(95.86,95.9,95.49,95.6),
+            Bar(95.52,96.24,95.48,96.12),
+        ))
+        bullish=evaluate_next(candles,source="api",closed_confirmed=True)
+        self.assertEqual(bullish.side,"CALL")
+        self.assertIn("Engolfo de alta",bullish.patterns)
+        inverse=[
+            Bar(200-c.open,200-c.low,200-c.high,200-c.close)
+            for c in candles
+        ]
+        bearish=evaluate_next(inverse,source="api",closed_confirmed=True)
+        self.assertEqual(bearish.side,"PUT")
+        self.assertIn("Engolfo de baixa",bearish.patterns)
+        self.assertIn("HIPOTESE",bearish.reasons[-1])
+        self.assertFalse(hasattr(bearish,"success_rate"))
 
     def test_doji_forces_wait_even_if_prior_trending(self):
         b=sequence()
