@@ -10,7 +10,8 @@ from ds_trader.strategy import Parameters
 from ds_trader.simulation import Settings, Replay
 from ds_trader.storage import Store, export_report
 from ds_trader.explain import explain
-from ds_trader.live_ui import LiveScreenTab
+from ds_trader.live_modern_ui import LiveScreenTab
+from ds_trader.theme import apply_theme
 from ds_trader.forex_ui import ForexMarketTab
 
 LABELS={
@@ -22,25 +23,23 @@ LABELS={
 'max_wait':'Espera máxima adicional de cotação (s)','stake':'Valor fixo por operação',
 'payout':'Payout hipotético (0.8 = 80%)','tie':'Empate: refund = devolve; loss = perde',
 'development':'Fração para desenvolvimento (0.7 = 70%)'}
-HELP='''DS TRADER — ANÁLISE E SIMULAÇÃO\n\n1. Clique em “Exemplo sintético” para conhecer o programa, ou importe seu CSV.\n2. Escolha ativo/origem/mercado/tempo gráfico. As datas opcionais exigem ISO 8601 com fuso.\n3. Confira as Configurações: valores iniciais são hipóteses, não parâmetros lucrativos.\n4. Inicie a reprodução. Pause, avance uma barra ou encerre. Clique em um evento para entender.\n5. Exporte JSON + dois CSVs. O JSON inclui parâmetros, versão, hash e dados de entrada para auditoria.\n\nCSV obrigatório (separador vírgula; decimal ponto; UTF-8):\ntimestamp,asset,source,market,interval_seconds,open,high,low,close\nTimestamp é abertura da barra com fuso. market: REGULAR ou OTC.\nOpcionais: volume,open_time,payout,payout_known_at.\nopen_time deve registrar o horário REAL da cotação open; não invente esse horário a partir do candle.\nPayout histórico é fração do lucro e exige payout_known_at <= open_time. Ausente: cenário hipotético.\n\nEntrada: primeira cotação open com open_time estritamente posterior ao sinal, respeitando atraso/prazo.\nExpiração: entrada + duração configurada (independente do candle). Liquidação exige cotação no instante exato.\nSem informação suficiente: INDETERMINADA. Não interpolamos. Apenas uma operação/entrada pendente.\n\nPivôs estritos com confirmação à direita; regiões ancoradas no primeiro pivô; toques separados.\nRompimento: fechamento cruza borda + tolerância; reteste em barra posterior toca região e fecha além da borda, na direção do rompimento.\nFechamento no lado oposto invalida; prazo expirado também. Uma região gera no máximo um padrão.\nAs regras são simétricas para ALTA e BAIXA.\n\nO teste é a parte final cronológica. Motor reinicia na divisão, sem transportar operações/regiões.\nNão ajuste parâmetros usando o teste. Reutilizá-lo para ajuste deixa de ser avaliação independente.\nIntervalo Wilson é descritivo: supõe independência e exclui empates/indeterminadas.\nLucro histórico, sobretudo sintético, não valida estratégia. Não há martingale nem ordens reais.\n\nFontes ao vivo e IA externa não estão ativadas nesta versão. Não há login, custo de IA ou envio de dados.\nExplicações são determinísticas, baseadas no motor. IQ Option: API oficial adequada não confirmada; adaptador legado não oficial fica fora deste aplicativo.\n\nHistórico e configurações ficam em dados locais do usuário. Use Backup para copiar o banco SQLite.\nRestaurar backup: feche o aplicativo e substitua history.sqlite3 na pasta exibida abaixo.\n'''
+HELP='''DS TRADER — ANÁLISE E SIMULAÇÃO\n\n1. Clique em “Exemplo sintético” para conhecer o programa, ou importe seu CSV.\n2. Escolha ativo/origem/mercado/tempo gráfico. As datas opcionais exigem ISO 8601 com fuso.\n3. Confira as Configurações: valores iniciais são hipóteses, não parâmetros lucrativos.\n4. Inicie a reprodução. Pause, avance uma barra ou encerre. Clique em um evento para entender.\n5. Exporte JSON + dois CSVs. O JSON inclui parâmetros, versão, hash e dados de entrada para auditoria.\n\nCSV obrigatório (separador vírgula; decimal ponto; UTF-8):\ntimestamp,asset,source,market,interval_seconds,open,high,low,close\nTimestamp é abertura da barra com fuso. market: REGULAR ou OTC.\nOpcionais: volume,open_time,payout,payout_known_at.\nopen_time deve registrar o horário REAL da cotação open; não invente esse horário a partir do candle.\nPayout histórico é fração do lucro e exige payout_known_at <= open_time. Ausente: cenário hipotético.\n\nEntrada: primeira cotação open com open_time estritamente posterior ao sinal, respeitando atraso/prazo.\nExpiração: entrada + duração configurada (independente do candle). Liquidação exige cotação no instante exato.\nSem informação suficiente: INDETERMINADA. Não interpolamos. Apenas uma operação/entrada pendente.\n\nPivôs estritos com confirmação à direita; regiões ancoradas no primeiro pivô; toques separados.\nRompimento: fechamento cruza borda + tolerância; reteste em barra posterior toca região e fecha além da borda, na direção do rompimento.\nFechamento no lado oposto invalida; prazo expirado também. Uma região gera no máximo um padrão.\nAs regras são simétricas para ALTA e BAIXA.\n\nO teste é a parte final cronológica. Motor reinicia na divisão, sem transportar operações/regiões.\nNão ajuste parâmetros usando o teste. Reutilizá-lo para ajuste deixa de ser avaliação independente.\nIntervalo Wilson é descritivo: supõe independência e exclui empates/indeterminadas.\nLucro histórico, sobretudo sintético, não valida estratégia. Não há martingale nem ordens reais.\n\nForex por API e leitura visual da tela são módulos separados da simulação. O monitor visual é experimental; não confirma fechamentos pela IQ Option nem envia ordens.\nExplicações são determinísticas, baseadas no motor. IQ Option: API oficial adequada não confirmada; adaptador legado não oficial fica fora deste aplicativo.\n\nHistórico e configurações ficam em dados locais do usuário. Use Backup para copiar o banco SQLite.\nRestaurar backup: feche o aplicativo e substitua history.sqlite3 na pasta exibida abaixo.\n'''
 
 class App:
     def __init__(self,root,store=None):
         self.root=root;self.store=store or Store()
         self.data=None;self.replay=None;self.running=False;self.run_id=None;self.report_view=None;self.timer=None;self.event_view=[]
         self.root.title('DS Trader — Análise e Simulação')
-        self.root.geometry('1240x850');self.root.minsize(950,680)
-        style=ttk.Style();style.theme_use('clam')
-        style.configure('TButton',padding=7);style.configure('TLabel',padding=3)
-        style.configure('Title.TLabel',font=('Segoe UI',19,'bold'))
+        self.root.geometry('1320x860');self.root.minsize(1000,700)
+        style=apply_theme(root)
         head=ttk.Frame(root,padding=(16,12));head.pack(fill='x')
         ttk.Label(head,text='DS Trader',style='Title.TLabel').pack(side='left')
-        ttk.Label(head,text='ANÁLISE E SIMULAÇÃO  •  LOCAL  •  SEM ORDENS REAIS').pack(side='left',padx=20)
+        ttk.Label(head,text='ANÁLISE E SIMULAÇÃO  •  MONITOR DE GRÁFICOS  •  SEM ORDENS REAIS',style='Muted.TLabel').pack(side='left',padx=20)
         bar=ttk.Frame(root,padding=(12,0));bar.pack(fill='x')
         for text,cmd in [('Importar CSV',self.import_file),('Exemplo sintético',self.demo),('Exportar relatório',self.export),('Backup',self.backup)]:
             ttk.Button(bar,text=text,command=lambda f=cmd:self.guard(f)).pack(side='left',padx=3)
         self.mode=tk.StringVar(value='SEM DADOS — importe um CSV ou abra o exemplo')
-        ttk.Label(root,textvariable=self.mode,foreground='#985600').pack(fill='x',padx=15)
+        ttk.Label(root,textvariable=self.mode,foreground='#ffcb76').pack(fill='x',padx=15)
         choose=ttk.Frame(root,padding=(15,3));choose.pack(fill='x')
         self.asset=ttk.Combobox(choose,state='readonly',width=52);self.asset.pack(side='left')
         ttk.Label(choose,text='De').pack(side='left');self.start=ttk.Entry(choose,width=24);self.start.pack(side='left')
@@ -62,11 +61,11 @@ class App:
         self.tree=ttk.Treeview(self.events_tab,columns=('time','asset','phase','status','direction'),show='headings',height=12)
         for key,label in [('time','Horário UTC'),('asset','Ativo'),('phase','Período'),('status','Evento'),('direction','Direção')]:self.tree.heading(key,text=label)
         self.tree.pack(fill='both',expand=True);self.tree.bind('<<TreeviewSelect>>',self.show_event)
-        self.detail=tk.Text(self.events_tab,height=8,wrap='word');self.detail.pack(fill='x')
+        self.detail=tk.Text(self.events_tab,height=8,wrap='word',bg='#101c2d',fg='#e9f3ff',insertbackground='#e9f3ff',relief='flat',font=('Segoe UI',10));self.detail.pack(fill='x')
         hist=ttk.Frame(self.report_tab);hist.pack(fill='x')
         self.saved=ttk.Combobox(hist,state='readonly',width=55);self.saved.pack(side='left')
         ttk.Button(hist,text='Abrir histórico salvo',command=lambda:self.guard(self.load_saved)).pack(side='left')
-        self.result=tk.Text(self.report_tab,wrap='word',font=('Consolas',11));self.result.pack(fill='both',expand=True)
+        self.result=tk.Text(self.report_tab,wrap='word',font=('Consolas',11),bg='#101c2d',fg='#e9f3ff',insertbackground='#e9f3ff',relief='flat');self.result.pack(fill='both',expand=True)
         self.vars={};config=self.store.config()
         for i,(name,default) in enumerate({**asdict(Parameters()),**asdict(Settings())}.items()):
             ttk.Label(self.config_tab,text=LABELS[name]).grid(row=i,column=0,sticky='w',padx=12)
@@ -74,9 +73,9 @@ class App:
             if name=='tie': widget=ttk.Combobox(self.config_tab,textvariable=var,values=['refund','loss'],state='readonly',width=22)
             else: widget=ttk.Entry(self.config_tab,textvariable=var,width=25)
             widget.grid(row=i,column=1,padx=15,pady=2)
-        ttk.Label(self.config_tab,text='Hipóteses de teste. Ajuste a largura à escala do ativo.\nMudanças valem somente para a próxima reprodução.\nO período de teste deve ficar reservado; não há otimização automática.',foreground='#985600').grid(row=0,column=2,rowspan=6,padx=10,sticky='nw')
+        ttk.Label(self.config_tab,text='Hipóteses de teste. Ajuste a largura à escala do ativo.\nMudanças valem somente para a próxima reprodução.\nO período de teste deve ficar reservado; não há otimização automática.',foreground='#ffcb76').grid(row=0,column=2,rowspan=6,padx=10,sticky='nw')
         ttk.Button(self.config_tab,text='Salvar configurações',command=lambda:self.guard(self.save_config)).grid(row=16,column=1,pady=8)
-        helptext=tk.Text(self.help_tab,wrap='word');helptext.pack(fill='both',expand=True);helptext.insert('1.0',HELP+'\nBanco: '+str(self.store.path));helptext.configure(state='disabled')
+        helptext=tk.Text(self.help_tab,wrap='word',bg='#101c2d',fg='#e9f3ff',insertbackground='#e9f3ff',relief='flat',font=('Segoe UI',10));helptext.pack(fill='both',expand=True);helptext.insert('1.0',HELP+'\nBanco: '+str(self.store.path));helptext.configure(state='disabled')
         self.refresh_saved();root.protocol('WM_DELETE_WINDOW',self.close)
     def guard(self,func):
         try:func()
