@@ -107,6 +107,12 @@ class LiveScreenTab:
         self.status = tk.StringVar(value="Parado — selecione primeiro a area do grafico.")
         ttk.Label(top, textvariable=self.status, wraplength=930,
                   foreground="#336faa").pack(anchor="w", pady=(12, 5))
+        self.next_opinion=tk.StringVar(value="PROXIMA VELA: AGUARDAR — captura nao iniciada")
+        self.bias_label=ttk.Label(top,textvariable=self.next_opinion,font=("Segoe UI",15,"bold"),
+                                  foreground="#1c6388",wraplength=980)
+        self.bias_label.pack(anchor="w",pady=(5,6))
+        self.structures=tk.StringVar(value="Padroes / LTA / LTB: aguardando reconhecimento.")
+        ttk.Label(top,textvariable=self.structures,wraplength=970).pack(anchor="w",pady=(0,4))
         self.observation = tk.StringVar(value="Sem observacoes; aguardando captura.")
         ttk.Label(top, textvariable=self.observation, wraplength=930,
                   justify="left").pack(anchor="w", pady=5)
@@ -118,7 +124,7 @@ class LiveScreenTab:
         self.image_label.pack(fill="both", expand=True)
         ttk.Label(parent, text=(
             "Limite: pixels nao sao cotacoes verificadas. A ultima vela pode estar aberta. "
-            "Sem entrada, payout, vencimento ou previsao CALL/PUT pela tela. "
+            "CALL/PUT é apenas uma hipótese visual experimental, não previsão confiável; sem horário de fechamento, payout ou vencimento. "
             "Dados historicos permanecem no modo CSV."
         ), wraplength=920, foreground="#985600").pack(anchor="w", padx=15, pady=(0, 12))
 
@@ -135,6 +141,7 @@ class LiveScreenTab:
         self.region = region
         self.status.set(f"Area selecionada: {region.width} x {region.height} pixels. Clique em Iniciar monitoramento.")
         self.observation.set("Nenhuma captura efetuada. Monitoramento desligado.")
+        self.next_opinion.set("PROXIMA VELA: AGUARDAR — ainda sem dados")
 
     def start(self):
         if self.active:
@@ -167,6 +174,14 @@ class LiveScreenTab:
                 self.preview_image = ImageTk.PhotoImage(frame)
                 self.image_label.configure(image=self.preview_image, text="")
                 self.status.set("Atualizado: " + result.captured_at + " UTC • " + result.movement)
+                self.next_opinion.set(
+                    "PROXIMA VELA: " + result.bias +
+                    " — HIPOTESE VISUAL NAO VALIDADA, NAO E ORDEM"
+                )
+                self.structures.set(
+                    "Padroes: " + (", ".join(result.patterns) or "nao reconhecidos") +
+                    " | Estruturas: " + (", ".join(result.structures) or "insuficientes")
+                )
                 self.observation.set(result.explanation)
         except Empty:
             pass
@@ -184,6 +199,7 @@ class LiveScreenTab:
         self.stop_btn.configure(state="disabled")
         self.pick_btn.configure(state="normal")
         self.status.set("Monitoramento parado. Nenhuma imagem foi salva ou enviada.")
+        self.next_opinion.set("PROXIMA VELA: AGUARDAR — captura interrompida")
 
     def shutdown(self):
         self.stop()
