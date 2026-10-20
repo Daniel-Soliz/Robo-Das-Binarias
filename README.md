@@ -1,8 +1,24 @@
 # DS Trader — Análise e Simulação
 
-Aplicativo desktop local em português para estudar **rompimento e reteste**. Importa CSV, mostra candles e regiões, reproduz cronologicamente, explica eventos, simula e exporta resultados. Também inclui um **modo de leitura visual contínua da tela**, opt-in, sem upload de fotos. **Não envia ordens nem conecta à corretora.**
+Aplicativo desktop em português para estudar **rompimento e reteste**. Importa CSV, mostra candles e regiões, reproduz cronologicamente, explica eventos, simula e exporta resultados. Também inclui um **modo de leitura visual contínua da tela**, opt-in, sem upload de fotos. **Não envia ordens nem conecta à corretora.**
 
 O modo de tela detecta geometricamente algumas velas verde/vermelho, exibe a região selecionada e descreve somente movimento **visual relativo**. Não consegue obter preços, horários de negociação ou vencimentos oficiais dos pixels; não emite recomendações CALL/PUT e não alimenta o simulador como se fossem cotações reais.
+
+## Acompanhar o Forex com dados do mercado (v1.1)
+
+A aba **Forex em tempo real** permite consultar candles de **EUR/USD, GBP/USD, USD/JPY, AUD/USD, USD/CAD, USD/CHF, EUR/JPY, EUR/GBP e NZD/USD**, recebidos da **Twelve Data**. E diferente da simulacao sintetica e da leitura visual de tela:
+
+1. Crie conta no fornecedor em https://twelvedata.com/ e obtenha uma **chave de API**, de acordo com o plano disponivel. Nao envie a chave a outra pessoa, nem aqui no chat.
+2. No DS Trader, abra **Forex em tempo real**, selecione o par de moedas e intervalo (1, 5 ou 15 minutos).
+3. Cole a chave no campo protegido e clique **Conectar ao mercado**.
+4. O sistema consulta o endpoint HTTPS de candles do fornecedor, mostra horario de fechamento UTC, indicacao de atraso, grafico OHLC, medias 9/21 e niveis aproximados por pivos. A captura e independente da IQ Option.
+5. Ao clicar **Desconectar**, o aplicativo encerra as novas consultas e descarta a chave da memoria do componente.
+
+O intervalo padrao de **120 segundos por consulta** protege a cota gratuita (ate cerca de 720 chamadas por 24 h se deixado ativo continuamente; tarifas e limites dependem do plano). Ha opcoes 60 ou 300 segundos. Isso e **atualizacao periodica**, nao streaming tick-a-tick. A analise exige pelo menos 25 candles consecutivos **ja fechados**. Candle ainda aberto, dados antigos e lacunas sao descartados/identificados; se as cotacoes estiverem atrasadas, nenhuma tendencia atual e calculada. Nao se faz estimativa de duracao, payout, acerto ou sinal operacional CALL/PUT. A API da Twelve Data exige conexao com a internet e pode ter custo.
+
+A chave e usada apenas na consulta da API via HTTPS, nao e salva no SQLite nem em relatórios. Como a API da Twelve Data usa chave por URL, o provedor e a infraestrutura de rede podem ve-la; nao compartilhe o computador com pessoas sem autorizacao. Nenhuma chamada de ordens ou acesso a conta da IQ Option foi implementada. O feed agrega precos de fornecedores: eles **nao sao necessariamente os mesmos precos da sua corretora**, nem garantem negociabilidade ou lucratividade.
+
+Documentacao do provedor: https://twelvedata.com/docs e https://support.twelvedata.com/en/articles/12520817-forex-api-v2
 
 ## Monitorar seu gráfico na tela em tempo real (leitura visual)
 
