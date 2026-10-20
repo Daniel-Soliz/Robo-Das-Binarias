@@ -11,6 +11,7 @@ from ds_trader.simulation import Settings, Replay
 from ds_trader.storage import Store, export_report
 from ds_trader.explain import explain
 from ds_trader.live_ui import LiveScreenTab
+from ds_trader.forex_ui import ForexMarketTab
 
 LABELS={
 'left':'Candles à esquerda do pivô','right':'Candles à direita (confirmação)',
@@ -45,8 +46,8 @@ class App:
         ttk.Label(choose,text='De').pack(side='left');self.start=ttk.Entry(choose,width=24);self.start.pack(side='left')
         ttk.Label(choose,text='Até').pack(side='left');self.end=ttk.Entry(choose,width=24);self.end.pack(side='left')
         self.book=ttk.Notebook(root);self.book.pack(fill='both',expand=True,padx=15,pady=8)
-        self.chart_tab=ttk.Frame(self.book);self.live_tab=ttk.Frame(self.book);self.events_tab=ttk.Frame(self.book);self.report_tab=ttk.Frame(self.book);self.config_tab=ttk.Frame(self.book);self.help_tab=ttk.Frame(self.book)
-        for frame,label in [(self.chart_tab,'Gráfico e reprodução'),(self.live_tab,'Tela ao vivo'),(self.events_tab,'Sinais e histórico'),(self.report_tab,'Resultados'),(self.config_tab,'Configurações'),(self.help_tab,'Ajuda')]:self.book.add(frame,text=label)
+        self.chart_tab=ttk.Frame(self.book);self.forex_tab=ttk.Frame(self.book);self.live_tab=ttk.Frame(self.book);self.events_tab=ttk.Frame(self.book);self.report_tab=ttk.Frame(self.book);self.config_tab=ttk.Frame(self.book);self.help_tab=ttk.Frame(self.book)
+        for frame,label in [(self.chart_tab,'Gráfico e reprodução'),(self.forex_tab,'Forex em tempo real'),(self.live_tab,'Tela ao vivo'),(self.events_tab,'Sinais e histórico'),(self.report_tab,'Resultados'),(self.config_tab,'Configurações'),(self.help_tab,'Ajuda')]:self.book.add(frame,text=label)
         controls=ttk.Frame(self.chart_tab);controls.pack(fill='x')
         for text,cmd in [('Iniciar / continuar',self.play),('Pausar',self.pause),('Avançar uma barra',self.step_once),('Encerrar',self.stop)]:
             ttk.Button(controls,text=text,command=lambda f=cmd:self.guard(f)).pack(side='left',padx=3,pady=5)
@@ -55,6 +56,7 @@ class App:
         ttk.Label(self.chart_tab,textvariable=self.status).pack(fill='x')
         self.canvas=tk.Canvas(self.chart_tab,bg='#101b2b',highlightthickness=0);self.canvas.pack(fill='both',expand=True)
         self.canvas.bind('<Configure>',lambda e:self.draw())
+        self.forex_view=ForexMarketTab(self.forex_tab,self.root)
         self.screen_view=LiveScreenTab(self.live_tab,self.root)
         ttk.Label(self.chart_tab,text='Últimos 90 candles já revelados • horários UTC • regiões azuis • preços sem interpolação').pack()
         self.tree=ttk.Treeview(self.events_tab,columns=('time','asset','phase','status','direction'),show='headings',height=12)
@@ -206,6 +208,7 @@ class App:
         path=filedialog.asksaveasfilename(defaultextension='.sqlite3',initialfile='ds-trader-backup.sqlite3')
         if path:self.store.backup(path)
     def close(self):
+        self.forex_view.shutdown()
         self.screen_view.shutdown()
         self.stop();self.store.close();self.root.destroy()
 
