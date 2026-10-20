@@ -287,6 +287,7 @@ class LiveScreenTab:
         self.online_badge.configure(text="●  MONITORAMENTO ATIVO", fg=GREEN)
         self.preview_marker.configure(text="●  RECEBENDO IMAGENS", fg=CYAN)
         self.status.set("Captura local iniciada")
+        self.monitor.start()
         self.poll()
 
     def _present(self, result):
