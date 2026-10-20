@@ -46,3 +46,17 @@ Foram adicionados `tests_ds/test_live_screen.py` com sete testes unitários para
 **Status:** as alterações foram gravadas no GitHub, mas NÃO há evidência confirmada neste relatório de que o novo CI Windows tenha ficado verde ou que o instalador atualizado tenha sido publicado. A captura real de tela no Windows, com diferentes plataformas, resoluções e tema de cores, NÃO foi validada. Nenhuma alegação de acerto financeiro pode ser baseada no modo visual.
 
 A fila de frames tem capacidade 1, descartando imagens antigas para reduzir atraso; a captura é executada em thread dedicada. Erros interrompem a captura com mensagem em tela. Não são enviados pixels ou credenciais para servidores por este modo. A leitura é aproximada, pode falhar em temas distintos, sobreposições, várias janelas, monitores e DPI.
+
+## Motor de padroes e hipotese da proxima vela (v1.2)
+
+Adicionados `ds_trader/next_candle.py` e `tests_ds/test_next_candle.py`:
+pivos com confirmacao bilateral, LTA/LTB, engolfo, doji, hipotese CALL/PUT/
+AGUARDAR e abstencao em amostras insuficientes. A aba da tela recusa recortes
+geometricamente irregulares/curtos, desenha as linhas de tendencia estimadas
+em copia da previa e mantem `trading_signal=False`: a hipotese nao e ordem
+nem cotacao de mercado. A aba da API calcula o mesmo vies sobre candles
+fechados, e cancela a hipotese se a barra estiver velha demais.
+
+**Resultados de testes desta versao NAO confirmados neste documento.**
+Exigir GitHub Actions completamente verde e testes manuais em Windows e no
+grafico real. Ver [SINAIS](SINAIS.md) para criterios de aceite e riscos.
