@@ -47,3 +47,20 @@ def presentation_for(result, *, obscured: bool = False) -> LivePanelState:
         ", ".join(result.structures) if result.structures else "Sem estruturas confirmadas",
         result.explanation, detected
     )
+
+
+def screen_region_is_obscured(region, own_window, threshold=0.08):
+    """True quando uma janela cobre parte significativa da região capturada.
+
+    region: Region com left/top/width/height.
+    own_window: (x, y, width, height) coordenadas físicas do DS Trader.
+    """
+    x, y, width, height = own_window
+    if region.width <= 0 or region.height <= 0 or width <= 0 or height <= 0:
+        return False
+    overlap_width = max(0, min(region.left + region.width, x + width)
+                           - max(region.left, x))
+    overlap_height = max(0, min(region.top + region.height, y + height)
+                            - max(region.top, y))
+    return (overlap_width * overlap_height /
+            (region.width * region.height)) > threshold
