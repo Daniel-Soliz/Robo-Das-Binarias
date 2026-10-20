@@ -26,6 +26,6 @@ def run():
         assert (Path(tmp)/'report_trades.csv').exists()
         app.close()
         reopened=Store(Path(tmp)/'state.sqlite3');assert reopened.runs();reopened.close()
-        return {'gui':'passed','candles':report['processed'],'operations':len(report['trades']),'persistence':'passed','export':'passed'}
+        return {'gui':'passed','candles':report['processed'],'operations':len(report['trades']),'persistence':'passed','export':'passed','forex_tab':'passed'}
 
 if __name__=='__main__':print(json.dumps(run()))
