@@ -18,6 +18,22 @@ O modo **Forex em tempo real** consulta a API HTTPS da Twelve Data, quando o usu
 
 O aplicativo descarta candles ainda abertos, interrompe a analise de dados sem atualizacao recente e nao cruza lacunas. Nao fornece ticks, entrada nem vencimento da IQ Option e nao envia ordens. Dados Forex do fornecedor podem diferir do preco da corretora. Uma leitura de tendencia NAO e recomendacao para CALL/PUT.
 
+## Proxima vela — novas hipoteses de CALL, PUT ou AGUARDAR
+
+A versao 1.2 do aplicativo exibe a **hipotese da proxima vela**, em vez
+de um comando de entrada. Em `Tela ao vivo`, voce vera, quando houver
+velas reconhecidas, os padroes e linhas de tendencia LTA/LTB calculadas
+visualmente; apenas recortes regulares com pelo menos 26 corpos estimados
+sao analisados. **A tela nao confirma o horario de fechamento do candle.**
+O sinal visual nao foi validado nem sincronizado a expiracao da IQ Option.
+
+No `Forex em tempo real` a hipotese da proxima barra depende de candles
+fechados enviados pela fonte Twelve Data. Dados atrasados geram AGUARDAR.
+Esses precos podem ser diferentes dos da IQ Option.
+
+Leia [regras e limites](SINAIS.md). O programa nunca clica para operar,
+nao recebe senha da corretora e nao atribui porcentagens ficticias de acerto.
+
 ## Monitoramento visual sem fotos enviadas
 
 1. Abra sua plataforma no navegador e mantenha visível o gráfico em candles verdes/vermelhos.
