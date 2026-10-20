@@ -6,7 +6,7 @@ from datetime import datetime,timedelta,timezone
 from urllib.error import HTTPError, URLError
 from ds_trader.forex_live import (
     FeedError, MarketCandle, parse_payload, analyze, fetch_candles,
-    ForexWatcher, PAIRS
+    ForexWatcher, PAIRS, reference_forex_open
 )
 
 START=datetime(2026,10,20,12,0,tzinfo=timezone.utc)
@@ -78,6 +78,27 @@ class ParseTests(unittest.TestCase):
         view=parse_payload(make_payload(n=6),"EUR/USD","1min",now=START+timedelta(minutes=7))
         self.assertEqual(view.trend,"AGUARDANDO")
         self.assertFalse(view.support)
+
+    def test_reference_market_hours_sunday_friday_and_break(self):
+        # Outubro: NY em UTC-4. Inicio semanal domingo 17h05 em NY.
+        def utc(hour, minute, day):
+            return datetime(2026,10,day,hour,minute,tzinfo=timezone.utc)
+        self.assertFalse(reference_forex_open(utc(20, 30, 18))) # domingo 16:30 NY
+        self.assertTrue(reference_forex_open(utc(21, 10, 18)))  # domingo 17:10 NY
+        self.assertTrue(reference_forex_open(utc(20, 58, 20)))  # terca 16:58 NY
+        self.assertFalse(reference_forex_open(utc(21, 2, 20)))  # terca 17:02 pausa
+        self.assertFalse(reference_forex_open(utc(21, 20, 23))) # sexta 17:20 NY
+        self.assertFalse(reference_forex_open(utc(15, 0, 24)))  # sabado
+        # Com dados ficticios novos durante pausa, nao liberar analise como mercado ativo.
+        pause=utc(21,2,20)
+        fresh=make_payload(36)
+        dt=pause-timedelta(minutes=2)
+        for row in fresh["values"]:
+            offset=(datetime.strptime(row["datetime"],"%Y-%m-%d %H:%M:%S").replace(tzinfo=timezone.utc)-START)
+            row["datetime"]=(dt-timedelta(minutes=34)+offset).strftime("%Y-%m-%d %H:%M:%S")
+        result=parse_payload(fresh,"EUR/USD","1min",now=pause)
+        self.assertIn("FORA DO HORARIO",result.status)
+        self.assertEqual(result.trend,"SEM ANALISE")
 
     def test_reject_invalid_future_price(self):
         data=make_payload()
