@@ -11,6 +11,8 @@ def run():
         root=tk.Tk();store=Store(Path(tmp)/'state.sqlite3');app=App(root,store)
         root.update()
         assert app.screen_view is not None, 'Aba de monitoramento visual ausente'
+        assert app.forex_view is not None, 'Aba Forex ausente'
+        assert not app.forex_view.running, 'Forex nao pode conectar automaticamente'
         assert not app.screen_view.active, 'Captura nao pode iniciar sem consentimento'
         app.demo();app.new_replay()
         for _ in range(15):app.advance();root.update()
