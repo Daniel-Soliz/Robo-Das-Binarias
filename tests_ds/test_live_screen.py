@@ -7,16 +7,16 @@ from PIL import Image, ImageDraw
 from ds_trader.live_screen import Region, ScreenMonitor, detect_visual_candles, assess
 
 
-def sample(upward=True):
+def sample(upward=True, count=18, gap=39):
     image = Image.new("RGB", (750, 330), "#111a26")
     draw = ImageDraw.Draw(image)
-    for i in range(18):
-        x = 10 + i * 39
+    for i in range(count):
+        x = 10 + i * gap
         if upward:
-            top = 248 - i * 7
+            top = 248 - i * (3 if count>20 else 7)
             direction = "#23d18b"
         else:
-            top = 35 + i * 7
+            top = 35 + i * (3 if count>20 else 7)
             direction = "#f45168"
         draw.line((x+6, top-9, x+6, top+34), fill=direction, width=1)
         draw.rectangle((x, top, x+12, top+19), fill=direction)
@@ -50,15 +50,36 @@ class ScreenAnalysisTests(unittest.TestCase):
         self.assertGreaterEqual(len(candles), 12)
         result = assess(sample(upward=True), captured_at="2026-10-19T12:00:00+00:00")
         self.assertEqual(result.captured_at, "2026-10-19T12:00:00+00:00")
-        self.assertEqual(result.movement, "Alta visual relativa")
+        self.assertEqual(result.movement, "Leitura insuficiente")
+        self.assertEqual(result.bias, "AGUARDAR")
         self.assertEqual(result.completed_estimate, result.detected - 1)
         self.assertFalse(result.trading_signal)
 
     def test_downward_colored_candles(self):
         result = assess(sample(upward=False))
         self.assertGreaterEqual(result.completed_estimate, 10)
-        self.assertEqual(result.movement, "Baixa visual relativa")
+        self.assertEqual(result.movement, "Leitura insuficiente")
         self.assertFalse(result.is_market_quote)
+
+    def test_regular_chart_enables_structural_analysis_only(self):
+        image=sample(upward=True,count=36,gap=20)
+        result=assess(image)
+        self.assertGreaterEqual(result.detected,26)
+        self.assertTrue(result.valid_roi)
+        self.assertIn(result.bias,("CALL","PUT","AGUARDAR"))
+        self.assertFalse(result.trading_signal)
+        self.assertFalse(result.is_market_quote)
+        self.assertIn("NAO e sinal validado",result.explanation)
+
+    def test_wrong_roi_rejects_sparse_buttons(self):
+        frame=Image.new("RGB",(750,330),"#111a26")
+        draw=ImageDraw.Draw(frame)
+        for i in range(20):
+            x=15+i*31
+            draw.rectangle((x,20,x+12,35),fill="#23d18b")
+        result=assess(frame)
+        self.assertEqual(result.bias,"AGUARDAR")
+        self.assertFalse(result.valid_roi)
 
     def test_continuous_capture_with_fake_desktop_stays_local(self):
         image = sample(upward=True)
