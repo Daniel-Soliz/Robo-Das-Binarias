@@ -248,17 +248,33 @@ class LiveScreenTab:
         height = max(0, min(ay + ah, by + bh) - max(ay, by))
         return width * height > aw * ah * .08
 
+    def _restore_window(self):
+        self.root.deiconify()
+        self.root.lift()
+        self._picker = None
+
+    def _cancel_selection(self):
+        self._restore_window()
+        self.status.set("Seleção cancelada. Nenhuma nova região foi capturada.")
+
     def select(self):
         if self.active:
             self.stop()
         try:
-            # O seletor existente trabalha em coordenadas globais do desktop.
-            self._picker = RegionPicker(self.root, self.selected)
+            # Esconde o DS Trader antes de selecionar para não capturar a própria janela.
+            self._picker = RegionPicker(
+                self.root, self.selected, on_cancel=self._cancel_selection
+            )
+            self.root.withdraw()
+            self._picker.window.lift()
+            self._picker.window.focus_force()
             self.status.set("Arraste somente sobre os candles. Esc cancela.")
         except Exception as exc:
+            self._restore_window()
             messagebox.showerror("Selecionar gráfico", str(exc), parent=self.root)
 
     def selected(self, region):
+        self._restore_window()
         self.region = region
         self.meta_text.set(f"{region.width} × {region.height} px")
         self.status.set("Área escolhida · Clique em Iniciar análise")
