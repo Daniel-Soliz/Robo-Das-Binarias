@@ -31,6 +31,14 @@ A primeira execução Windows detectou uma leitura de JSON no teste sem encoding
 - Instalador Inno Setup com assistente gráfico e desinstalador, mas sem assinatura digital; não é MSI. Versão portátil e instalador simples antigo continuam disponíveis.
 - Não houve avaliação de desempenho em arquivos grandes. Salvamento local ocorre a cada passo e contém o CSV original.
 
+## Novo modo: Forex por API Twelve Data (v1.1, nao validado em servidor real)
+
+O aplicativo agora possui aba `Forex em tempo real` que solicita chave de API em campo mascarado e consulta candles Forex por HTTPS. O feed de 1/5/15 min nao e streaming tick-a-tick. A chave e mantida somente na sessao e descartada ao desconectar; nao e gravada em SQLite ou CSV.
+
+Foram adicionados testes unitarios offline em `tests_ds/test_forex_live.py`: parse estrito de OHLC UTC, par e intervalo, rejeicao de duplicatas e preços invalidos, descarte da vela ainda aberta, tratamento de lacunas, estados atrasados, indicador descritivo de tendencia, rejeicao de 429, verbosidade de erro que nao expõe chave e consulta somente ao endpoint GET /time_series. O smoke test verifica que a aba existe e que a API nao e acessada automaticamente.
+
+**Ainda nao verificado:** chamada real a Twelve Data com credenciais validas, compatibilidade do plano do usuario, latencia efetiva ou release Windows atualizado. Confirmar no GitHub Actions que os testes das duas plataformas passaram e o EXE foi publicado antes de liberar o download.
+
 ## Evolução posterior — leitor visual de tela
 
 Foram adicionados `tests_ds/test_live_screen.py` com sete testes unitários para geometria, configuração, imagem em branco e candles coloridos de alta/baixa. Eles verificam também que o modo visual não fornece preço de mercado nem sinal de ordens. O `scripts/gui_smoke.py` agora verifica a existência da aba e a ausência de captura automática.
