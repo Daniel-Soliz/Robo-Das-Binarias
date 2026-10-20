@@ -1,7 +1,7 @@
 """Interface do feed Forex. Nunca roda no thread grafico nem persiste credenciais."""
 import tkinter as tk
 from tkinter import ttk, messagebox
-from datetime import timezone
+from datetime import datetime, timezone
 from queue import Empty
 from ds_trader.forex_live import PAIRS, INTERVALS, ForexWatcher
 
@@ -111,6 +111,15 @@ class ForexMarketTab:
                     self.draw()
         except Empty:
             pass
+        if self.view is not None and self.view.status=="ATUALIZADO":
+            elapsed=(datetime.now(timezone.utc)-self.view.last_closed_at).total_seconds()
+            limit=max(3*INTERVALS[self.view.interval],180)
+            if elapsed>limit:
+                self.view=None
+                self.canvas.delete("all")
+                self.status.set("ATRASADO — nenhuma cotacao recente confirmada")
+                self.context.set("Exibicao suspensa ate receber novos candles fechados do fornecedor.")
+                self.prices.set("Suporte/resistencia suspensos por falta de dados recentes.")
         self.timer=self.root.after(200,self.poll)
 
     def draw(self):
