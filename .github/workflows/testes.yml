@@ -57,36 +57,62 @@ jobs:
             build-error.txt
             smoke-result.json
   publicar:
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    # Permite a publicacao tanto no push como na execucao manual da branch main.
+    if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
     needs: windows
     runs-on: ubuntu-22.04
     permissions:
       contents: write
     steps:
-      - uses: actions/download-artifact@v4
+      - name: Obter script de conferencia
+        uses: actions/checkout@v4
+      - name: Obter executavel compilado e testado no Windows
+        uses: actions/download-artifact@v4
         with:
           name: DS-Trader-Windows-x64
           path: downloads
-      - name: Conferir integridade dos arquivos
+      - name: Conferir relatorio Windows, arquivos e integridade SHA256
         shell: bash
         run: |
           set -euo pipefail
-          cd downloads
-          test -s release-build/smoke-result.json
-          cp release-build/DS-Trader-Setup.exe ./DS-Trader-Setup.exe
-          sha256sum -c DS-Trader-Setup.sha256.txt
-          sha256sum -c DS-Trader-Windows-x64.sha256.txt
-      - name: Publicar instalador verificado em GitHub Releases
+          echo 'Arquivos recebidos do Windows:'
+          find downloads -maxdepth 5 -type f -printf '%p (%s bytes)\\n'
+          python scripts/prepare_release.py downloads release-ready
+      - name: Publicar arquivos EXE e ZIP no GitHub Releases
         shell: bash
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GH_REPO: ${{ github.repository }}
         run: |
           set -euo pipefail
-          cd downloads
-          arquivos=(DS-Trader-Setup.exe DS-Trader-Setup.sha256.txt DS-Trader-Windows-x64.zip DS-Trader-Windows-x64.sha256.txt)
-          if gh release view v1.0.0 >/dev/null 2>&1; then
-            gh release upload v1.0.0 "${arquivos[@]}" --clobber
+          test -n "$GH_TOKEN" || { echo "::error::GITHUB_TOKEN nao disponivel"; exit 1; }
+          gh --version
+          echo "Repositorio: $GH_REPO"
+          tag="v1.0.0-build-${GITHUB_SHA:0:8}"
+          files=(
+            release-ready/DS-Trader-Setup.exe
+            release-ready/DS-Trader-Setup.sha256.txt
+            release-ready/DS-Trader-Windows-x64.zip
+            release-ready/DS-Trader-Windows-x64.sha256.txt
+          )
+          if gh release view "$tag" >/dev/null 2>&1; then
+            gh release upload "$tag" "${files[@]}" --clobber
+            gh release edit "$tag" --latest
           else
-            gh release create v1.0.0 "${arquivos[@]}" --target "$GITHUB_SHA" --title 'DS Trader 1.0.0 - Windows x64' --notes 'Instalador Windows com atalho na Área de Trabalho; pacote portátil opcional. Aplicativo local de análise e simulação; não envia ordens. Compilação e smoke test de GUI automatizados em Windows Server 2022. Sem assinatura digital; não desative proteções do Windows.'
+            gh release create "$tag" "${files[@]}" \\
+              --target "$GITHUB_SHA" \\
+              --title "DS Trader 1.0.0 - Windows x64" \\
+              --latest \\
+              --notes "Instalador Windows com assistente, atalho na Area de Trabalho e desinstalador. Inclui monitoramento visual local e simulacao de dados historicos. Nao envia ordens; nao e conectado a IQ Option. Sem assinatura digital: nao desative protecoes do Windows."
           fi
+          gh release view "$tag" --json url,assets --jq '.url, (.assets[].name)'
+      - name: Diagnostico de falha na publicacao
+        if: failure()
+        shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          echo "::error::Publicacao falhou. Confira o primeiro passo vermelho no job publicar."
+          echo "O instalador passou no Windows, mas ainda nao deve ser mostrado como download sem a release."
+          find downloads -maxdepth 5 -type f 2>/dev/null || true
