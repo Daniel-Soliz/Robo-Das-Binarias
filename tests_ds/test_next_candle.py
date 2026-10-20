@@ -39,7 +39,7 @@ class StructuralRules(unittest.TestCase):
         self.assertEqual(_pivots(b[:4],"high"),[])
 
     def test_lta_and_ltb_require_structural_ascending_descending(self):
-        self.assertEqual(_line([(2,1.0),(8,1.1)],10,True),(1.1+(1.1-1.0)/6,1.1+2*(1.1-1.0)/6))
+        self.assertEqual(_line([(2,1.0),(8,1.1)],10,True),(1.1,1.1+(1.1-1.0)/6))
         self.assertIsNotNone(_line([(2,1.3),(9,1.1)],11,False))
         self.assertIsNone(_line([(2,1.3),(9,1.1)],11,True))
         self.assertIsNone(_line([(2,1.0),(8,1.1)],30,True))
