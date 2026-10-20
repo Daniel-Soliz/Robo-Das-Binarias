@@ -4,6 +4,20 @@
 
 **Portátil (opcional):** extraia `DS-Trader-Windows-x64.zip` inteiro e abra `DS-Trader/DS-Trader.exe`, sem mover o arquivo para fora da pasta. A instalação antiga por `Instalar.cmd` continua no ZIP, mas o assistente .exe é a forma recomendada. O programa não requer login.
 
+## Como ver pares de Forex com candles recentes
+
+O modo **Forex em tempo real** consulta a API HTTPS da Twelve Data, quando o usuario fornece sua propria chave. Este modo mostra dados de mercado separados da demonstracao sintetica e da aba Tela ao vivo.
+
+1. Se tiver acesso ao fornecedor, gere uma chave em https://twelvedata.com/ . A disponibilidade e o custo dependem do plano.
+2. Abra **Forex em tempo real** no DS Trader.
+3. Escolha o par (por exemplo EUR/USD) e o intervalo (1min, 5min ou 15min).
+4. Selecione a frequencia de atualizacao (120 s recomendado; 60 ou 300 s tambem disponiveis conforme limites da conta).
+5. Insira a chave da API **na janela do aplicativo**, nao por mensagens, e clique **Conectar ao mercado**.
+6. Confira o selo **ATUALIZADO** ou **ATRASADO**, horario UTC do ultimo candle, tendencia descritiva, medias moveis e suporte/resistencia por pivos.
+7. Clique **Desconectar** para interromper a leitura e descartar a chave em memoria.
+
+O aplicativo descarta candles ainda abertos, interrompe a analise de dados sem atualizacao recente e nao cruza lacunas. Nao fornece ticks, entrada nem vencimento da IQ Option e nao envia ordens. Dados Forex do fornecedor podem diferir do preco da corretora. Uma leitura de tendencia NAO e recomendacao para CALL/PUT.
+
 ## Monitoramento visual sem fotos enviadas
 
 1. Abra sua plataforma no navegador e mantenha visível o gráfico em candles verdes/vermelhos.
