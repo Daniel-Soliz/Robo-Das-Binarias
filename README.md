@@ -2,7 +2,26 @@
 
 Aplicativo desktop em português para estudar **rompimento e reteste**. Importa CSV, mostra candles e regiões, reproduz cronologicamente, explica eventos, simula e exporta resultados. Também inclui um **modo de leitura visual contínua da tela**, opt-in, sem upload de fotos. **Não envia ordens nem conecta à corretora.**
 
-O modo de tela detecta geometricamente algumas velas verde/vermelho, exibe a região selecionada e descreve somente movimento **visual relativo**. Não consegue obter preços, horários de negociação ou vencimentos oficiais dos pixels; não emite recomendações CALL/PUT e não alimenta o simulador como se fossem cotações reais.
+O modo de tela detecta geometricamente algumas velas verde/vermelho, exibe a região selecionada e descreve somente movimento **visual relativo**. Não consegue obter preços, horários de negociação ou vencimentos oficiais dos pixels; apenas mostra vieses condicionais CALL/PUT/AGUARDAR rotulados como não validados; não alimenta o simulador como se fossem cotações reais.
+
+## Hipoteses CALL / PUT / AGUARDAR e leitura de padroes (v1.2)
+
+Na aba **Tela ao vivo**, o DS Trader agora pode descrever engolfo, doji,
+martelo, inside bar, suporte/resistencia e LTA/LTB por pivos. Exibe uma
+hipotese **CALL / PUT / AGUARDAR** com explicacoes. A leitura da tela e
+**EXPERIMENTAL**: nao confirma por si o fechamento exato do candle e
+nao constitui recomendacao de entrada na IQ Option. Recortes irregulares
+ou com menos de 26 possiveis candles resultam em **AGUARDAR**.
+LTA/LTB sao desenhadas na previa, quando detectadas.
+
+A aba **Forex em tempo real**, se houver chave de API e cotacoes atuais,
+tambem exibe uma hipotese da proxima barra, mas troca para AGUARDAR
+quando o candle estiver velho demais, mesmo que a serie seja historicamente
+valida. Nenhum modo inventa probabilidade de acerto, payout ou horario
+de vencimento na corretora.
+
+**Regras detalhadas, validacao e limites:** [Sinais e proxima vela](docs/SINAIS.md).
+A estrategia e exploratoria, nao foi validada para operacoes reais.
 
 ## Acompanhar o Forex com dados do mercado (v1.1)
 
@@ -43,7 +62,7 @@ A instalação é feita na pasta do usuário, sem exigir Python nem privilégios
 
 **Versão portátil opcional:** na mesma página, o link de ZIP só aparece quando houver pacote confirmado. Extraia o ZIP completo e abra `DS-Trader/DS-Trader.exe`. Não separe a pasta `_internal` do executável.
 
-A página consulta os assets da última release pública e **não mostra um botão de download fictício**. O workflow `.github/workflows/testes.yml` testa o motor, empacota, executa teste real de interface no Windows, instala silenciosamente e verifica atalho e execução antes de publicar `DS-Trader-Setup.exe` na release `v1.0.0`. Se a compilação falhar, a página aponta para o estado dos testes, sem oferecer um arquivo inexistente.
+A página consulta os assets da última release pública e **não mostra um botão de download fictício**. O workflow `.github/workflows/testes.yml` testa o motor, empacota, executa teste real de interface no Windows, instala silenciosamente e verifica atalho e execução antes de publicar `DS-Trader-Setup.exe` em Releases versionadas do GitHub. Se a compilação falhar, a página aponta para o estado dos testes, sem oferecer um arquivo inexistente.
 
 O executável e o instalador **não possuem assinatura digital**. O Windows pode exibir avisos; não desative o Defender ou outras proteções para executar o programa. Os testes automatizados usam Windows Server 2022 e não substituem um teste manual no Windows 10/11 pessoal.
 
