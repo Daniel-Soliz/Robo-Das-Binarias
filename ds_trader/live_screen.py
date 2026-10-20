@@ -6,6 +6,8 @@ from datetime import datetime, timezone
 from queue import Empty, Full, Queue
 import threading
 import time
+from statistics import median
+from ds_trader.next_candle import evaluate_next
 
 # Nao importar PIL/mss no modulo: CSV e testes funcionam sem captura.
 
@@ -45,6 +47,10 @@ class Assessment:
     explanation: str
     is_market_quote: bool = False
     trading_signal: bool = False
+    bias: str = "AGUARDAR"
+    patterns: tuple[str, ...] = ()
+    structures: tuple[str, ...] = ()
+    valid_roi: bool = False
 
 
 def detect_visual_candles(image):
@@ -117,35 +123,64 @@ def detect_visual_candles(image):
     return tuple(candles)
 
 
+def _roi_quality(detected, width):
+    """Verifica regularidade geométrica da seleção, sem fingir precisão de preço.
+
+    Grandes irregularidades são típicas de menus, botões ou pixels isolados.
+    É um filtro conservador, não certificação de reconhecimento.
+    """
+    if len(detected) < 26:
+        return False, "Necessarios pelo menos 26 corpos de vela reconhecidos em uma unica regiao."
+    gaps=[b.x-a.x for a,b in zip(detected,detected[1:])]
+    if any(g<=2 for g in gaps):
+        return False,"Velas mescladas: aumente o zoom do grafico."
+    step=median(gaps)
+    consistent=sum(.65*step<=g<=1.35*step for g in gaps)/len(gaps)
+    if not (4<=step<=90) or consistent<.80:
+        return False,"Espacamento irregular: selecione somente a area do grafico, sem menus ou botoes."
+    if detected[-1].x-detected[0].x<width*.28:
+        return False,"Regiao nao parece conter um grafico amplo de candles."
+    return True, ""
+
+
 def assess(image, captured_at=None):
+    """Hipotese visual nao auditavel; sem dados temporais/ordens da corretora."""
     when = captured_at or datetime.now(timezone.utc).isoformat()
-    detected = detect_visual_candles(image)
-    # A vela mais a direita pode ainda estar em formacao: nunca trata-la como fechada.
-    completed = detected[:-1]
-    if len(completed) < 8:
-        movement = "Leitura insuficiente"
-        explanation = (
-            f"{len(detected)} possiveis velas coloridas reconhecidas. "
-            "Enquadre apenas a area dos candles, com fundo/cores visiveis. "
-            "Nao e possivel confirmar o movimento."
-        )
+    detected=detect_visual_candles(image)
+    completed=detected[:-1]  # vela mais à direita pode estar em formação
+    roi_ok, why = _roi_quality(detected, min(image.width,1200))
+    bias="AGUARDAR"
+    patterns=()
+    structures=()
+    if not roi_ok:
+        movement="Leitura insuficiente"
+        explanation=(f"{len(detected)} possiveis corpos coloridos identificados. "
+                     f"{why} Nao existe hipotese segura para a proxima vela.")
     else:
-        recent = completed[-3:]
-        past = completed[-8:-5]
-        delta = sum(c.close for c in recent)/3 - sum(c.close for c in past)/3
-        if delta > .018:
-            movement = "Alta visual relativa"
-        elif delta < -.018:
-            movement = "Baixa visual relativa"
-        else:
-            movement = "Movimento visual indefinido"
-        explanation = (
-            f"{len(completed)} corpos coloridos estimados como velas anteriores; "
-            f"ultima vela excluida por poder estar em formacao. {movement}. "
-            "Posicoes relativas dos pixels, NAO cotacoes/tempo de vencimento. "
-            "Nao usar como recomendacao CALL/PUT ou comprovacao de resultado."
-        )
-    return Assessment(when, len(detected), len(completed), movement, explanation)
+        past=completed[-8:-5]
+        recent=completed[-3:]
+        delta=sum(c.close for c in recent)/3-sum(c.close for c in past)/3
+        movement=("Alta visual relativa" if delta>.018 else
+                  "Baixa visual relativa" if delta<-.018 else
+                  "Movimento visual indefinido")
+        # Modelo aceita *velas estimadas*, e nunca afirma que são cotações da IQ Option.
+        opinion=evaluate_next(completed,source="screen",closed_confirmed=True)
+        bias=opinion.side
+        patterns=opinion.patterns
+        structures=tuple(x for x,found in (
+            ("LTA por fundos ascendentes",opinion.lta),
+            ("LTB por topos descendentes",opinion.ltb),
+            ("Suporte relativo",opinion.support is not None),
+            ("Resistencia relativa",opinion.resistance is not None)
+        ) if found)
+        explanation=(f"{len(completed)} corpos de velas anteriores estimados. "
+                     f"{movement}. Padroes: {', '.join(patterns) or 'nenhum confirmado'}. "
+                     f"Estruturas: {', '.join(structures) or 'insuficientes'}. "
+                     + " ".join(opinion.reasons[-3:])+
+                     " ATENCAO: hipotese apenas visual, sem comprovacao do fechamento, "
+                     "hora da proxima vela, cotacao ou vencimento; NAO e sinal validado.")
+    return Assessment(when,len(detected),len(completed),movement,explanation,
+                      bias=bias,patterns=patterns,structures=structures,valid_roi=roi_ok)
 
 
 class ScreenMonitor:
