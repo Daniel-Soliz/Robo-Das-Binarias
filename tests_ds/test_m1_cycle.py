@@ -4,7 +4,7 @@ import unittest
 from dataclasses import replace
 from datetime import datetime, timedelta, timezone
 
-from ds_trader.m1_cycle import M1Bar, M1History, M1Price, M1Cycle
+from ds_trader.m1_cycle import M1Bar, M1History, M1Price, M1Cycle, VERIFIED_KIND
 
 
 UTC = timezone.utc
@@ -22,8 +22,9 @@ def bullish_history():
     return M1History(
         asset="EURUSD", source="TEST_FEED", timeframe="M1",
         observed_at=START + timedelta(minutes=35, seconds=30),
-        clock_confirmed=True, identity_confirmed=True,
-        bars=tuple(M1Bar(START + timedelta(minutes=i), *prices, True)
+        clock_confirmed=True, identity_confirmed=True, source_kind=VERIFIED_KIND,
+        bars=tuple(M1Bar(START + timedelta(minutes=i), *prices, True,
+                         START + timedelta(minutes=i+1))
                    for i, prices in enumerate(bars)),
     )
 
@@ -32,7 +33,7 @@ def price(event_at, value, *, delay=.25, kind="OPEN", **kwargs):
     original = M1Price("EURUSD", "TEST_FEED", "M1", event_at,
                        event_at + timedelta(seconds=delay), value,
                        True, True, True, kind=kind,
-                       closed_confirmed=kind == "CLOSE")
+                       closed_confirmed=kind == "CLOSE", source_kind=VERIFIED_KIND)
     return replace(original, **kwargs)
 
 
@@ -68,6 +69,8 @@ class M1CycleTests(unittest.TestCase):
         raw = bullish_history()
         scenarios = (
             replace(raw, bars=raw.bars[:-1] + (replace(raw.bars[-1], closed_confirmed=False),)),
+            replace(raw, bars=raw.bars[:-1] + (replace(raw.bars[-1], confirmed_at=None),)),
+            replace(raw, bars=raw.bars[:-1] + (replace(raw.bars[-1], confirmed_at=raw.observed_at + timedelta(minutes=2)),)),
             replace(raw, observed_at=START + timedelta(minutes=34, seconds=59)),
             replace(raw, bars=raw.bars[:-1] + (replace(raw.bars[-1], opened_at=START + timedelta(minutes=35)),)),
             replace(raw, bars=raw.bars[:-1] + (replace(raw.bars[-1], close=raw.bars[-1].high + 1),)),
@@ -83,6 +86,7 @@ class M1CycleTests(unittest.TestCase):
             replace(raw, asset=""),
             replace(raw, clock_confirmed=False),
             replace(raw, identity_confirmed=False),
+            replace(raw, source_kind="VISUAL"),
             replace(raw, observed_at=raw.observed_at.replace(tzinfo=None)),
             replace(raw, bars=raw.bars[:9] + (replace(raw.bars[9], opened_at=raw.bars[9].opened_at + timedelta(seconds=1)),) + raw.bars[10:]),
         )
@@ -104,6 +108,7 @@ class M1CycleTests(unittest.TestCase):
             lambda at: price(at, 96, delay=1.1),
             lambda at: replace(price(at, 96), event_at=at + timedelta(seconds=1)),
             lambda at: price(at, 96, price_confirmed=False),
+            lambda at: price(at, 96, source_kind="SCREEN"),
             lambda at: price(at, 96, clock_confirmed=False),
             lambda at: price(at, 96, timeframe="M5"),
             lambda at: price(at, 96, asset="GBPUSD"),
@@ -148,6 +153,38 @@ class M1CycleTests(unittest.TestCase):
             result = engine.settle(price(target + timedelta(minutes=1), end_price, kind="CLOSE")).result
             self.assertEqual(result.outcome, expected)
             self.assertFalse(hasattr(result, "profit"))
+
+    def test_unverified_visual_ohlc_never_creates_entry(self):
+        base = bullish_history()
+        for kind in ("UNVERIFIED", "SCREEN", "TWELVE_DATA_CANDLES"):
+            with self.subTest(kind=kind):
+                engine = M1Cycle()
+                status = engine.prepare(replace(base, source_kind=kind))
+                self.assertEqual(status.phase, "AGUARDAR")
+                self.assertEqual(engine.results, [])
+        engine = M1Cycle()
+        target = engine.prepare(base).target_open
+        self.assertEqual(engine.activate(price(target, 96, source_kind="SCREEN")).phase, "AGUARDAR")
+        self.assertFalse(engine.results)
+
+    def test_close_confirmation_time_cannot_arrive_before_close_or_after_prepare(self):
+        base = bullish_history()
+        last = base.bars[-1]
+        too_early = replace(last, confirmed_at=last.opened_at + timedelta(seconds=30))
+        too_late = replace(last, confirmed_at=base.observed_at + timedelta(milliseconds=1))
+        for bad_bar in (too_early, too_late):
+            with self.subTest(bad_bar=bad_bar):
+                status = M1Cycle().prepare(replace(base, bars=base.bars[:-1] + (bad_bar,)))
+                self.assertEqual(status.phase, "AGUARDAR")
+
+    def test_after_result_side_is_wait_not_recycled(self):
+        engine = M1Cycle()
+        target = engine.prepare(bullish_history()).target_open
+        engine.activate(price(target, 96.0))
+        status = engine.settle(price(target + timedelta(minutes=1), 96.2, kind="CLOSE"))
+        self.assertEqual(status.phase, "CONCLUIDA")
+        self.assertEqual(status.side, "AGUARDAR")
+        self.assertEqual(len(engine.results), 1)
 
     def test_lost_identity_during_pending_or_active_cancels_cycle(self):
         for phase in ("PENDENTE", "ATIVA"):
