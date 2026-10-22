@@ -70,6 +70,13 @@ def detect_visual_candles(image):
     source = image.copy()
     source.thumbnail((1200, 700))
     hsv = source.convert("HSV")
+    # NumPy acelera a contagem de pixels e corpos inteiros no Windows.
+    # O detector Python continua disponivel para testes e ambientes sem NumPy.
+    try:
+        from ds_trader.visual_fast import detect_numpy
+        return detect_numpy(hsv, VisualCandle)
+    except ImportError:
+        pass
     px = hsv.load()
     width, height = hsv.size
     labels = []
@@ -154,9 +161,8 @@ def assess(image, captured_at=None):
     when = captured_at or datetime.now(timezone.utc).isoformat()
     detected=detect_visual_candles(image)
     completed=detected[:-1]  # vela mais à direita pode estar em formação
-    scaled=image.copy()
-    scaled.thumbnail((1200,700))
-    roi_ok, why = _roi_quality(detected, scaled.width)
+    # O detector limita o tamanho, sem recriar outra miniatura por frame.
+    roi_ok, why = _roi_quality(detected, min(image.width, 1200))
     bias="AGUARDAR"
     patterns=()
     structures=()
@@ -192,7 +198,8 @@ def assess(image, captured_at=None):
                      "hora da proxima vela, cotacao ou vencimento; NAO e sinal validado.")
     return Assessment(when,len(detected),len(completed),movement,explanation,
                       bias=bias,patterns=patterns,structures=structures,valid_roi=roi_ok,
-                      candle_xs=tuple(c.x for c in completed),model_width=scaled.width,
+                      candle_xs=tuple(c.x for c in completed),
+                      model_width=min(image.width, 1200),
                       lta=lta,ltb=ltb)
 
 
@@ -319,7 +326,9 @@ class ScreenMonitor:
         else:
             self._last_signature=None
             self._stable_reads=0
-        frame.thumbnail((1050, 590))
+        # Prévia suficiente para a coluna de ~700px; menor custo de
+        # redimensionar/copiar entre worker e Tk.
+        frame.thumbnail((880, 510))
         frame=annotate_preview(frame,result)
         self._emit((result, frame))
 
