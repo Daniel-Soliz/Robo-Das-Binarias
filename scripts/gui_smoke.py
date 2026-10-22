@@ -13,6 +13,12 @@ def run():
         assert app.screen_view is not None, 'Aba de monitoramento visual ausente'
         assert app.screen_view.container.cget('bg') == '#08111f', 'Tema escuro ausente'
         assert app.screen_view.next_opinion.get() == 'AGUARDAR', 'Sinal inicial inseguro'
+        assert app.screen_view.m1_cycle.results == [], 'Captura nao pode criar entradas M1'
+        assert 'captura visual' in app.screen_view.cycle_message.get(), 'Motivo do bloqueio M1 ausente'
+        app.screen_view.timeframe.set('M5')
+        assert 'não é M1' in app.screen_view.cycle_message.get(), 'Troca de periodo nao bloqueada'
+        app.screen_view.timeframe.set('M1')
+        assert app.screen_view.m1_cycle.status().side == 'AGUARDAR', 'Ciclo visual inseguro'
         assert app.screen_view.start_btn.cget('state') == 'disabled', 'Iniciar sem selecionar grafico'
         from ds_trader.live_screen import Region
         from ds_trader.window_capture import WindowTarget
