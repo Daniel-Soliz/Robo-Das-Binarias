@@ -16,6 +16,14 @@ def run():
         assert app.forex_view.view is None, 'Nao inventar candles antes da conexao'
         assert app.forex_view.next_candle.get().startswith('PROXIMA VELA: AGUARDAR')
         assert not app.forex_view.running, 'Nao conectar a API automaticamente'
+        assert 'AGUARDAR' in app.forex_view.side_label.cget('text'), 'Card inicial inseguro'
+        app.forex_view.set_chart_type('line')
+        assert app.forex_view.chart_type == 'line', 'Controle linha inoperante'
+        app.forex_view.set_chart_type('candles')
+        app.forex_view.toggle_expand()
+        assert app.forex_view.expanded, 'Expandir grafico inoperante'
+        app.forex_view.toggle_expand()
+        assert not app.forex_view.expanded, 'Restaurar painéis inoperante'
         app.shell.go('overview')
         assert app.book.select() == str(app.overview_tab), 'Visao geral inacessivel'
         app.shell.go('live')
