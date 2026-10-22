@@ -7,6 +7,7 @@ from __future__ import annotations
 
 from datetime import datetime
 from queue import Empty
+import time
 import tkinter as tk
 from tkinter import ttk, messagebox
 
@@ -69,6 +70,10 @@ class LiveScreenTab:
         self.after_id = None
         self.preview_image = None
         self.last_frame = None
+        self._last_preview_at = None
+        self._last_preview_size = None
+        self._detail_cache = None
+        self._stale_notified = False
         self.timeframe = tk.StringVar(value="M1")
         self.m1_cycle = M1Cycle()
         self.cycle_message = tk.StringVar(
@@ -243,6 +248,9 @@ class LiveScreenTab:
         self.cycle_message.set(status.reason)
 
     def _set_detail(self, text):
+        if text == self._detail_cache:
+            return
+        self._detail_cache = text
         self.detail_text.configure(state="normal")
         self.detail_text.delete("1.0", "end")
         self.detail_text.insert("1.0", text)
@@ -256,9 +264,14 @@ class LiveScreenTab:
         available_h = self.image_label.winfo_height()
         if available_w < 80 or available_h < 80:
             return
+        # Não converter o mesmo bitmap repetidamente sem mudança de tamanho.
+        target_size = (available_w - 12, available_h - 12)
+        if _event is not None and self._last_preview_size == target_size:
+            return
         frame = self.last_frame.copy()
-        frame.thumbnail((available_w - 12, available_h - 12), Image.Resampling.LANCZOS)
+        frame.thumbnail(target_size, Image.Resampling.BILINEAR)
         self.preview_image = ImageTk.PhotoImage(frame)
+        self._last_preview_size = target_size
         self.image_label.configure(image=self.preview_image, text="")
 
     def _overlaps_selected_region(self):
@@ -322,6 +335,7 @@ class LiveScreenTab:
         self.start_btn.configure(state="normal")
         self.last_frame = None
         self.preview_image = None
+        self._last_preview_size = None
         self.image_label.configure(
             image="", text="Área selecionada.\n\nClique em Iniciar análise para acompanhar.")
         self.next_opinion.set("AGUARDAR")
@@ -343,7 +357,7 @@ class LiveScreenTab:
             messagebox.showinfo("DS Trader", "Fixe primeiro a janela do grafico pelo botao.",
                                 parent=self.root)
             return
-        self.monitor = ScreenMonitor(self.region, interval_seconds=1.2,
+        self.monitor = ScreenMonitor(self.region, interval_seconds=0.65,
                                      window_target=self.window_target)
         self.active = True
         self.pick_btn.configure(state="disabled")
@@ -353,6 +367,8 @@ class LiveScreenTab:
         self.preview_marker.configure(text="●  RECEBENDO IMAGENS", fg=CYAN)
         self.status.set("Captura da janela fixada iniciada" if self.window_target else
                         "Captura local iniciada")
+        self._last_preview_at = time.monotonic()
+        self._stale_notified = False
         self.monitor.start()
         self.poll()
 
@@ -365,7 +381,8 @@ class LiveScreenTab:
         self.signal_context.configure(fg=SIDE_COLORS[state.side])
         self.signal_subtitle.set(state.subtitle)
         self.status.set(state.status)
-        self._refresh_cycle_guard()
+        # O bloqueio temporal da IQ Option só muda ao selecionar período/
+        # iniciar/parar; recalculá-lo em cada frame causava repinturas extras.
         self.quality_status.set("Gráfico encoberto" if obscured else
                                 "Janela fixada; sem horário verificado"
                                 if self.window_target and result.valid_roi else
@@ -401,11 +418,21 @@ class LiveScreenTab:
                     return
                 result, frame = item
                 self.last_frame = frame
+                self._last_preview_size = None
+                self._last_preview_at = time.monotonic()
+                self._stale_notified = False
                 self._resize_preview()
                 self._present(result)
+                self.preview_marker.configure(text="●  RECEBENDO IMAGENS", fg=CYAN)
         except Empty:
             pass
-        self.after_id = self.root.after(170, self.poll)
+        if (self._last_preview_at is not None and not self._stale_notified and
+                time.monotonic() - self._last_preview_at > 3.0):
+            self._stale_notified = True
+            self.preview_marker.configure(text="●  LEITURA ATRASADA", fg=AMBER)
+            self.next_opinion.set("AGUARDAR")
+            self.signal_subtitle.set("Sem quadro recente · monitoramento atrasado")
+        self.after_id = self.root.after(120, self.poll)
 
     def stop(self):
         self.active = False
@@ -413,7 +440,7 @@ class LiveScreenTab:
             self.root.after_cancel(self.after_id)
             self.after_id = None
         if self.monitor is not None:
-            self.monitor.stop()
+            self.monitor.stop(wait=False)
             self.monitor = None
         self.pick_btn.configure(state="normal")
         self.start_btn.configure(state="normal" if self.region is not None else "disabled")
