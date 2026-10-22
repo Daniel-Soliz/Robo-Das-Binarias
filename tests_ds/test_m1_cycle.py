@@ -154,6 +154,19 @@ class M1CycleTests(unittest.TestCase):
             self.assertEqual(result.outcome, expected)
             self.assertFalse(hasattr(result, "profit"))
 
+    def test_visual_gate_m1_and_other_periods_never_record_entry(self):
+        for period in ("M1", "M5", "M15", ""):
+            engine = M1Cycle()
+            state = engine.block_visual(period)
+            self.assertEqual(state.side, "AGUARDAR")
+            self.assertEqual(state.phase, "AGUARDAR")
+            self.assertEqual(engine.results, [])
+            self.assertIsNone(engine.opening_price)
+            if period == "M1":
+                self.assertIn("captura visual", state.reason)
+            else:
+                self.assertIn("período informado não é M1", state.reason)
+
     def test_unverified_visual_ohlc_never_creates_entry(self):
         base = bullish_history()
         for kind in ("UNVERIFIED", "SCREEN", "TWELVE_DATA_CANDLES"):
