@@ -70,13 +70,20 @@ def run():
         assert app.forex_view is not None, 'Aba Forex ausente'
         assert not app.forex_view.running, 'Forex nao pode conectar automaticamente'
         assert not app.screen_view.active, 'Captura nao pode iniciar sem consentimento'
+        # O dashboard abre no Forex. O canvas do replay só recebe tamanho
+        # real quando sua página fica visível; jamais validar canvas oculto.
+        _checkpoint('selecionando aba grafico e reproducao')
+        app.shell.go('chart')
+        root.update()
         _checkpoint('antes app.demo()')
         app.demo();app.new_replay()
         _checkpoint('apos app.demo()')
         _checkpoint('antes 15 updates')
         for _ in range(15):app.advance();root.update()
         _checkpoint('apos 15 updates')
-        assert app.canvas.find_all(), 'Gráfico não desenhado'
+        app.draw()
+        assert app.canvas.winfo_width() > 100, 'Canvas grafico nao recebeu geometria'
+        assert app.canvas.find_all(), 'Gráfico nao desenhado após abrir aba de reproducao'
         app.pause();assert not app.running
         _checkpoint('antes replay ate fim')
         while not app.replay.finished:app.advance()
