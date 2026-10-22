@@ -100,12 +100,18 @@ def run():
             app.close()
             _checkpoint('apos app.close()')
         finally:
-            if root.winfo_exists():
-                app.close()
-                _checkpoint('fechamento preventivo apos falha GUI')
+            # winfo_exists() pode lancar TclError APOS root.destroy(), nao
+            # apenas devolver False. Sempre cancelar watchdog e fechar logs.
+            try:
+                if root.winfo_exists():
+                    app.close()
+                    _checkpoint('fechamento preventivo apos falha GUI')
+            except tk.TclError:
+                pass  # Janela ja destruida pelo fluxo principal.
+            finally:
+                faulthandler.cancel_dump_traceback_later()
+                diag.close()
         reopened=Store(Path(tmp)/'state.sqlite3');assert reopened.runs();reopened.close()
-        faulthandler.cancel_dump_traceback_later()
-        diag.close()
         _checkpoint('smoke concluido')
         return {'gui':'passed','candles':report['processed'],'operations':len(report['trades']),'persistence':'passed','export':'passed','forex_tab':'passed'}
 
