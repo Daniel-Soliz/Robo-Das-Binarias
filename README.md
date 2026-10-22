@@ -4,6 +4,27 @@ Aplicativo desktop em português para estudar **rompimento e reteste**. Importa 
 
 O modo de tela detecta geometricamente algumas velas verde/vermelho, exibe a região selecionada e descreve somente movimento **visual relativo**. Não consegue obter preços, horários de negociação ou vencimentos oficiais dos pixels; por isso a tela mantém **AGUARDAR** e exibe estruturas técnicas estimadas, sem entrada validada. Não alimenta o simulador como se fossem cotações reais.
 
+## Monitor visual otimizado (v1.7)
+
+A aba **Tela ao vivo** agora usa uma arquitetura de captura desacoplada
+do processamento. O callback Windows Graphics Capture copia o quadro
+e o coloca em fila de capacidade **um**, enquanto uma thread separada
+extrai candles e estruturas. Se a análise atrasar, quadros intermediários
+são descartados em vez de acumular demora crescente.
+
+- Captura solicitada a cada **650 ms** (limite desejado, não FPS garantido).
+- Leitura HSV vetorizada com NumPy no Windows; fallback Python mantido.
+- Prévia reduzida, sem recalcular Text/guard temporal em todos os frames.
+- Botão **Parar** não aguarda processamento pesado na thread do Tkinter.
+- Sem novos quadros por mais de três segundos, exibe **LEITURA ATRASADA**
+  e mantém **AGUARDAR**, sem hipótese operacional válida.
+- Capture apenas a região de candles, sem menus ou barra do navegador,
+  para reduzir custo e melhorar a legibilidade.
+
+**Importante:** a câmera de pixels ainda não comprova horários/cotações
+nem gera sinais M1 validados. Os testes de desempenho são de engenharia
+e não demonstram qualidade preditiva ou lucro.
+
 ## Dashboard DS Trader 1.6 — nova navegação e painel Forex
 
 A interface Windows foi redesenhada conforme o modelo visual fornecido:
