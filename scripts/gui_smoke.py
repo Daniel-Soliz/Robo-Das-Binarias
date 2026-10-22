@@ -10,6 +10,18 @@ def run():
     with tempfile.TemporaryDirectory() as tmp:
         root=tk.Tk();store=Store(Path(tmp)/'state.sqlite3');app=App(root,store)
         root.update()
+        # A nova shell deve substituir a barra de abas antiga por navegacao real.
+        assert app.shell.current == 'forex', 'Pagina inicial do dashboard nao e Forex'
+        assert len(app.shell.nav_buttons) == 8, 'Navegacao lateral incompleta'
+        assert app.forex_view.view is None, 'Nao inventar candles antes da conexao'
+        assert app.forex_view.next_candle.get().startswith('PROXIMA VELA: AGUARDAR')
+        assert not app.forex_view.running, 'Nao conectar a API automaticamente'
+        app.shell.go('overview')
+        assert app.book.select() == str(app.overview_tab), 'Visao geral inacessivel'
+        app.shell.go('live')
+        assert app.book.select() == str(app.live_tab), 'Tela ao vivo inacessivel'
+        app.shell.go('forex')
+        assert app.book.select() == str(app.forex_tab), 'Forex inacessivel'
         assert app.screen_view is not None, 'Aba de monitoramento visual ausente'
         assert app.screen_view.container.cget('bg') == '#08111f', 'Tema escuro ausente'
         assert app.screen_view.next_opinion.get() == 'AGUARDAR', 'Sinal inicial inseguro'
