@@ -93,6 +93,25 @@ Documentacao do provedor: https://twelvedata.com/docs e https://support.twelveda
 
 **Limitações:** cores diferentes, linhas/indicadores sobrepostos, janela minimizada, conteúdo protegido, mudanças de escala, lag, velas sobrepostas e monitores com DPI especial podem impedir/alterar a leitura. A última vela é tratada como potencialmente aberta. Não usar esse modo como fonte de preço ou prova de rentabilidade. O modo CSV mantém simulação independente.
 
+## Ciclo M1 de estudo: só com dados temporais comprovados
+
+O módulo `ds_trader/m1_cycle.py` implementa a sequência **hipótese pendente
+antes da abertura → cotação de abertura exata → comparação no vencimento
+T+60 s**. Exige candles fechados com horário de confirmação e referências
+de preços com timestamps, da mesma fonte e do mesmo ativo. Não usa
+fechamento futuro e nunca confunde OHLC.open ou o preço do candle anterior
+com preço real de referência de entrada. A avaliação ACERTO/ERRO/EMPATE é
+apenas de referência, sem ordens nem payout.
+
+**A captura visual da IQ Option não fornece essas provas.** Sua aba mostra
+**AGUARDAR** para o ciclo validado e explica por quê, mesmo quando reconhece
+padrões, tendência ou LTA/LTB. A API Twelve Data não alimenta automaticamente
+o ciclo da IQ Option; fontes são separadas.
+
+Veja as regras, horários e exemplos em
+[**Ciclo M1 e critérios de validação**](docs/CICLO_M1.md).
+Os testes sintéticos estão em `tests_ds/test_m1_cycle.py`.
+
 ## Baixar e instalar no Windows 10/11 (64 bits)
 
 **Página de download:** https://daniel-soliz.github.io/Robo-Das-Binarias/
