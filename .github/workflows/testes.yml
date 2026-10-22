@@ -94,7 +94,7 @@ jobs:
           test -n "$GH_TOKEN" || { echo "::error::GITHUB_TOKEN nao disponivel"; exit 1; }
           gh --version
           echo "Repositorio: $GH_REPO"
-          tag="v1.6.0-build-${GITHUB_SHA:0:8}"
+          tag="v1.7.0-build-${GITHUB_SHA:0:8}"
           files=(
             release-ready/DS-Trader-Setup.exe
             release-ready/DS-Trader-Setup.sha256.txt
