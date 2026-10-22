@@ -107,6 +107,8 @@ class M1CycleTests(unittest.TestCase):
         cases = (
             lambda at: price(at, 96, delay=1.1),
             lambda at: replace(price(at, 96), event_at=at + timedelta(seconds=1)),
+            lambda at: replace(price(at, 96), event_at=at - timedelta(minutes=1)),
+            lambda at: price(at, 96, source="ANOTHER_FEED"),
             lambda at: price(at, 96, price_confirmed=False),
             lambda at: price(at, 96, source_kind="SCREEN"),
             lambda at: price(at, 96, clock_confirmed=False),
@@ -123,7 +125,7 @@ class M1CycleTests(unittest.TestCase):
                 self.assertEqual(engine.results, [])
 
     def test_delayed_or_missing_close_is_indeterminate(self):
-        for closing in (None, "late", "unchecked", "unclosed", "wrong_kind", "wrong_boundary"):
+        for closing in (None, "late", "unchecked", "unclosed", "wrong_kind", "wrong_boundary", "previous_quote"):
             engine = M1Cycle()
             target = engine.prepare(bullish_history()).target_open
             self.assertEqual(engine.activate(price(target, 96)).phase, "ATIVA")
@@ -138,6 +140,8 @@ class M1CycleTests(unittest.TestCase):
                 status = engine.settle(price(expiry, 96.5, kind="CLOSE", closed_confirmed=False))
             elif closing == "wrong_kind":
                 status = engine.settle(price(expiry, 96.5, kind="OPEN"))
+            elif closing == "previous_quote":
+                status = engine.settle(price(expiry - timedelta(minutes=1), 96.5, kind="CLOSE"))
             else:
                 status = engine.settle(price(expiry + timedelta(minutes=1), 96.5, kind="CLOSE"))
             with self.subTest(closing=closing):
