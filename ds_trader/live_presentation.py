@@ -38,6 +38,14 @@ def presentation_for(result, *, obscured: bool = False) -> LivePanelState:
             "Ainda não reconhecidos", "Ainda não identificadas",
             result.explanation, detected
         )
+    if not result.temporal_verified:
+        return LivePanelState(
+            "AGUARDAR", "warning", "FECHAMENTO / RELOGIO NAO VERIFICADOS",
+            "Estruturas visuais apenas; sem referencia temporal de entrada M1.",
+            ", ".join(result.patterns) if result.patterns else "Nenhum padrao comprovado",
+            ", ".join(result.structures) if result.structures else "Sem estruturas reconhecidas",
+            result.explanation, detected,
+        )
     side = result.bias if result.bias in ("CALL", "PUT") else "AGUARDAR"
     subtitle = "HIPÓTESE VISUAL EXPERIMENTAL" if side != "AGUARDAR" else "SEM CONFLUÊNCIA CONFIÁVEL"
     return LivePanelState(

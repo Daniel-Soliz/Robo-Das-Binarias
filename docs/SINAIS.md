@@ -60,10 +60,9 @@ Referencias de definicoes:
    o grupo mais a direita (que pode ser vela em formacao).
 4. Aguarda pelo menos **3 quadros consecutivos geometricamente estaveis**;
    ao alterar recorte, escala ou quantidade detectada, mostra AGUARDAR de novo.
-5. Exibe `PROXIMA VELA: CALL / PUT / AGUARDAR` como **HIPOTESE VISUAL
-   NAO VALIDADA**, os motivos e linhas LTA/LTB relativas desenhadas na previa
-   quando possivel.
-5. Clique `Parar`. Imagens nao sao gravadas ou transmitidas.
+5. Exibe **AGUARDAR** por falta de prova temporal, mas preserva a descricao
+   de padroes e linhas LTA/LTB na previa quando reconhecidas.
+6. Clique `Parar`. Imagens nao sao gravadas ou transmitidas.
 
 **Limite critico:** nao existe comprovacao do instante exato em que a vela da
 IQ Option fecha; a tela e apenas um desenho. Rolagem, zoom, cores, temas,
@@ -82,6 +81,30 @@ ja fechadas. Se o ultimo fechamento estiver velho demais (limite entre 20 e
 Consulta a cada 60/120/300 s conforme plano, nao stream tick-a-tick.
 Se houver erro, falta de credito, pausa ou mercado fechado, suspende-se a
 analise. Precos da API nao sao necessariamente iguais aos da corretora.
+
+## Ciclo M1 auditavel (motor isolado, ainda sem fonte ao vivo certificada)
+
+`ds_trader/m1_cycle.py` aceita apenas eventos com identidade (ativo, fonte,
+M1), relogio confiavel e historico de pelo menos 25 candles consecutivos cujo
+fechamento foi **explicitamente comprovado pela fonte**, alem de amostras de
+preco etiquetadas `OPEN` e `CLOSE` com horarios de referencia precisos.
+
+- **PENDENTE:** prepara CALL/PUT so antes da abertura-alvo, com antecedencia
+  minima de 1 segundo. Se ultimo candle usado fechou em T, alvo = T+60s.
+- **ATIVA:** somente se a abertura vier marcada em T+60s, recebida ate 1s
+  depois, com preco confirmado. E referencia de teste, nao ordem executada.
+- **CONCLUIDA:** somente se o fechamento exato 60s apos a abertura vier
+  confirmado (recebido ate 2s depois). Compara precos em ACERTO/ERRO/EMPATE.
+- **AGUARDAR:** qualquer atraso maior que as tolerancias, preco invalidado,
+  barra aberta, relogio sem fuso, troca de ativo/periodo, lacuna ou ausencia de
+  prova. O minuto nao pode ser reutilizado para fabricar outra entrada.
+
+As tolerancias sao parametros tecnicos conservadores, nao permissao de operar
+atrasado. A origem precisa comprovar a hora de cada observacao; declarar
+`closed_confirmed=True` em dados estimados por pixels seria incorreto. A
+API Forex por consultas periodicas nao garante esse nivel de observacao e
+**nao esta conectada ao ciclo M1**. Os testes usam amostras artificiais,
+nao performance de mercado nem sincronizacao real com a IQ Option.
 
 ## Testes e condicoes de liberacao
 

@@ -311,7 +311,8 @@ class LiveScreenTab:
         self.signal_subtitle.set(state.subtitle)
         self.status.set(state.status)
         self.quality_status.set("Gráfico encoberto" if obscured else
-                                "Recorte legível" if result.valid_roi else "Leitura insuficiente")
+                                "Recorte legível; sem horário verificado"
+                                if result.valid_roi else "Leitura insuficiente")
         self.pattern_text.set(state.pattern)
         self.structure_text.set(state.structure)
         self._set_detail(state.detail)

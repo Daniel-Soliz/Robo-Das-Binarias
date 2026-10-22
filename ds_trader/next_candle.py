@@ -96,8 +96,8 @@ def evaluate_next(candles: Sequence, *, source: str, closed_confirmed: bool) -> 
              trend="INDEFINIDA", up=0, down=0):
         return NextCandleOpinion("AGUARDAR", trend, tuple(pats), support, resistance,
                                  lta, ltb, (reason,), caveat, up, down)
-    if not closed_confirmed:
-        return wait("Fechamento do candle nao confirmado; impossivel avaliar proxima vela.")
+    # Mesmo sem prova temporal, podemos DESCREVER estruturas em pixels para a
+    # previa. A hipotese direcional, porem, fica obrigatoriamente bloqueada.
     if len(candles) < 25:
         return wait(f"Somente {len(candles)} candles fechados; minimo 25 para avaliar contexto.")
     if any(not (c.low <= c.open <= c.high and c.low <= c.close <= c.high) for c in candles):
@@ -144,6 +144,11 @@ def evaluate_next(candles: Sequence, *, source: str, closed_confirmed: bool) -> 
         if abs(resistance-last.close) < avg_range*1.2:
             down += 1
             reasons.append("Preco visual/provedor proximo a resistencia.")
+    if not closed_confirmed:
+        return wait("Fechamento do candle nao confirmado; estruturas somente visuais, "
+                    "sem CALL/PUT acionavel.", pats=pats, support=support,
+                    resistance=resistance, lta=lta, ltb=ltb, trend=trend,
+                    up=up, down=down)
     if "Doji / indecisao" in pats or "Inside bar" in pats:
         return wait("Indecisao/contracao no ultimo candle: aguardar confirmacao.",
                     pats=pats, support=support, resistance=resistance, lta=lta,

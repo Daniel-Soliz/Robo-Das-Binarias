@@ -51,6 +51,7 @@ class Assessment:
     patterns: tuple[str, ...] = ()
     structures: tuple[str, ...] = ()
     valid_roi: bool = False
+    temporal_verified: bool = False
     candle_xs: tuple[int, ...] = ()
     model_width: int = 1
     lta: tuple[float, float] | None = None
@@ -170,8 +171,9 @@ def assess(image, captured_at=None):
         movement=("Alta visual relativa" if delta>.018 else
                   "Baixa visual relativa" if delta<-.018 else
                   "Movimento visual indefinido")
-        # Modelo aceita *velas estimadas*, e nunca afirma que são cotações da IQ Option.
-        opinion=evaluate_next(completed,source="screen",closed_confirmed=True)
+        # Excluir a ultima figura nao COMPROVA fechamento das anteriores.
+        # Preserva a descricao de estruturas, mas bloqueia vies CALL/PUT.
+        opinion=evaluate_next(completed,source="screen",closed_confirmed=False)
         lta,ltb=opinion.lta,opinion.ltb
         bias=opinion.side
         patterns=opinion.patterns

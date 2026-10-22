@@ -28,7 +28,9 @@ visual não confirma o instante exato do fechamento ou expiração.
 
 ## Limites
 
-CALL/PUT são hipóteses visuais experimentais, não sinais validados.
+CALL/PUT nao sao liberados na captura visual, pois esta nao prova o horario
+do fechamento. A tela continua exibindo padroes e linhas tecnicas, com
+**AGUARDAR** no painel de proxima vela.
 O sistema não envia ordens e não calcula probabilidade real de acerto.
 Recortes ruins, velas mescladas, janelas encobertas e falta de confluência
 levam a AGUARDAR. O monitor não substitui cotações oficiais com timestamps.

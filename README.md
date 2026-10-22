@@ -2,15 +2,15 @@
 
 Aplicativo desktop em português para estudar **rompimento e reteste**. Importa CSV, mostra candles e regiões, reproduz cronologicamente, explica eventos, simula e exporta resultados. Também inclui um **modo de leitura visual contínua da tela**, opt-in, sem upload de fotos. **Não envia ordens nem conecta à corretora.**
 
-O modo de tela detecta geometricamente algumas velas verde/vermelho, exibe a região selecionada e descreve somente movimento **visual relativo**. Não consegue obter preços, horários de negociação ou vencimentos oficiais dos pixels; apenas mostra vieses condicionais CALL/PUT/AGUARDAR rotulados como não validados; não alimenta o simulador como se fossem cotações reais.
+O modo de tela detecta geometricamente algumas velas verde/vermelho, exibe a região selecionada e descreve somente movimento **visual relativo**. Não consegue obter preços, horários de negociação ou vencimentos oficiais dos pixels; por isso a tela mantém **AGUARDAR** e exibe estruturas técnicas estimadas, sem entrada validada. Não alimenta o simulador como se fossem cotações reais.
 
 ## Interface moderna DS Trader 1.3
 
-A guia **Tela ao vivo** ganhou um painel escuro de duas colunas: **previsualizacao do grafico a esquerda**, e **CALL, PUT ou AGUARDAR com padroes, LTA/LTB e explicacao a direita**. O tema das outras abas tambem foi modernizado, mantendo o software nativo do Windows sem exigir nova biblioteca de interface.
+A guia **Tela ao vivo** ganhou um painel escuro de duas colunas: **previsualizacao do grafico a esquerda** e estado **AGUARDAR**, padroes, LTA/LTB e explicacao a direita. O tema das outras abas tambem foi modernizado, mantendo o software nativo do Windows sem exigir nova biblioteca de interface.
 
 Ao clicar **Selecionar grafico**, o DS Trader oculta sua janela temporariamente. Se, durante a analise, sua janela cobrir a regiao do navegador monitorada, o programa mostra **AGUARDAR — GRAFICO ENCOBERTO**, pois nao consegue enxergar atraves de outras janelas. Use navegador e DS Trader lado a lado ou em monitores diferentes.
 
-O periodo M1/M5/M15 no painel e **informado manualmente**, nao reconhecido automaticamente. O leitor visual nao confirma o momento exato de fechamento da proxima vela, e as hipoteses CALL/PUT **ainda nao sao validadas para operacao real**.
+O periodo M1/M5/M15 no painel e **informado manualmente**, nao reconhecido automaticamente. O leitor visual nao confirma o momento exato de fechamento da proxima vela e **nao libera CALL/PUT como entrada**.
 
 Consulte [guia do novo painel](docs/INTERFACE.md), [regras tecnicas](docs/SINAIS.md) e [testes](docs/TESTES.md).
 
@@ -22,8 +22,26 @@ hipotese **CALL / PUT / AGUARDAR** com explicacoes. A leitura da tela e
 **EXPERIMENTAL**: nao confirma por si o fechamento exato do candle e
 nao constitui recomendacao de entrada na IQ Option. Recortes irregulares
 ou com menos de 26 possiveis candles resultam em **AGUARDAR**.
-A captura exige 3 quadros geometricamente estaveis antes de mostrar vies direcional.
+A captura exige 3 quadros geometricamente estaveis antes de exibir estruturas estimadas, mas isso nao confirma o fechamento.
 LTA/LTB sao desenhadas na previa, quando detectadas.
+
+## Ciclo de teste M1 com prova temporal
+
+O modulo `ds_trader/m1_cycle.py` implementa uma maquina de estados testavel:
+**PENDENTE → ATIVA → CONCLUIDA** ou **AGUARDAR**, sem enviar ordens.
+Requer ativo/fonte/M1/relogio confirmados, pelo menos 25 candles M1
+fechados e consecutivos, preco de abertura com horario exato e preco de
+fechamento comprovado 60 segundos depois. Leituras atrasadas ou incertas
+invalidam a tentativa. ACERTO/ERRO/EMPATE compara somente os dois precos,
+sem prometer lucro ou simular payout.
+
+**Fronteira temporal importante:** se a ultima vela utilizada fecha em T,
+uma hipotese so pode ser preparada *depois* de T. Como a vela seguinte ja
+abre em T, a primeira abertura elegivel e T+60 segundos. Nao se usa o
+fechamento de T para fingir uma decisao anterior a T. O motor M1 esta
+disponivel para testes automatizados e futuro adaptador de dados verificados;
+a captura de tela e a Twelve Data atuais **nao comprovam a abertura e o
+vencimento da IQ Option** e nao ativam ciclos validos desse modulo.
 
 A aba **Forex em tempo real**, se houver chave de API e cotacoes atuais,
 tambem exibe uma hipotese da proxima barra, mas troca para AGUARDAR

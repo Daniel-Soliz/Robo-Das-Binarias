@@ -1,5 +1,20 @@
 # Relatório de testes — 19/10/2026
 
+## Atualizacao — 21/10/2026 (ciclo de teste M1)
+
+O ciclo cronologico isolado de `ds_trader/m1_cycle.py` ganhou testes em
+`tests_ds/test_m1_cycle.py`: abertura e vencimento exatamente separados por
+60s, preparacao antes da abertura, bloqueio de candle aberto/futuro, ausencia
+de duplicacao, atraso, perda de ativo/M1/relogio, falta de comprovacao de
+fechamento e comparacao ACERTO/ERRO/EMPATE sem retorno financeiro inventado.
+O modulo `live_screen.assess` foi corrigido: remover o grupo mais a direita
+nao autoriza `closed_confirmed=True`. O painel visual fica em AGUARDAR,
+preservando LTA/LTB e padroes estimados.
+
+Nao houve teste de sincronizacao/entrada real na IQ Option nem integracao
+de feed de ticks verificados. A fonte Twelve Data atual nao fornece eventos
+exatos de abertura e fechamento para esse ciclo; nao os fabrica.
+
 ## Executado neste ambiente
 
 `python -m unittest discover -s tests_ds -v`: **23 testes aprovados** (Linux, Python do ambiente; núcleo sem dependências externas).

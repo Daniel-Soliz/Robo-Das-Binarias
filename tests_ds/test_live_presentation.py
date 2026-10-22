@@ -14,6 +14,7 @@ class ScreenPanelTest(TestCase):
             explanation="Engolfo de alta; hipótese não validada.",
             bias="CALL", patterns=("Engolfo de alta",),
             structures=("LTA", "Suporte relativo"), valid_roi=True,
+            temporal_verified=True,
         )
         return replace(a, **kwargs)
 
@@ -34,6 +35,13 @@ class ScreenPanelTest(TestCase):
         state = presentation_for(self.sample(bias="CALL", valid_roi=False))
         self.assertEqual(state.side, "AGUARDAR")
         self.assertIn("LEITURA INSUFICIENTE", state.subtitle)
+
+    def test_temporal_confirmation_missing_blocks_call_and_put(self):
+        for side in ("CALL", "PUT"):
+            state = presentation_for(self.sample(bias=side, temporal_verified=False))
+            self.assertEqual(state.side, "AGUARDAR")
+            self.assertIn("NAO VERIFICADOS", state.subtitle)
+            self.assertIn("LTA", state.structure)
 
     def test_obscured_source_forces_wait_even_with_call(self):
         state = presentation_for(self.sample(), obscured=True)
