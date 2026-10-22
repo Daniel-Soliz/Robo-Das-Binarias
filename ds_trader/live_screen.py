@@ -67,8 +67,12 @@ def detect_visual_candles(image):
     """
     if image.width < 180 or image.height < 120:
         return ()
-    source = image.copy()
-    source.thumbnail((1200, 700))
+    # Converter diretamente quando já cabe no detector; copiar somente
+    # imagens grandes para limitar o custo da matriz HSV.
+    source = image
+    if image.width > 1200 or image.height > 700:
+        source = image.copy()
+        source.thumbnail((1200, 700))
     hsv = source.convert("HSV")
     # NumPy acelera a contagem de pixels e corpos inteiros no Windows.
     # O detector Python continua disponivel para testes e ambientes sem NumPy.
@@ -156,13 +160,19 @@ def _roi_quality(detected, width):
     return True, ""
 
 
+def _model_width(image):
+    """Largura de pixels no detector após thumbnail (sem cópia extra)."""
+    factor = min(1.0, 1200 / image.width, 700 / image.height)
+    return max(1, round(image.width * factor))
+
+
 def assess(image, captured_at=None):
     """Hipotese visual nao auditavel; sem dados temporais/ordens da corretora."""
     when = captured_at or datetime.now(timezone.utc).isoformat()
     detected=detect_visual_candles(image)
     completed=detected[:-1]  # vela mais à direita pode estar em formação
     # O detector limita o tamanho, sem recriar outra miniatura por frame.
-    roi_ok, why = _roi_quality(detected, min(image.width, 1200))
+    roi_ok, why = _roi_quality(detected, _model_width(image))
     bias="AGUARDAR"
     patterns=()
     structures=()
@@ -199,7 +209,7 @@ def assess(image, captured_at=None):
     return Assessment(when,len(detected),len(completed),movement,explanation,
                       bias=bias,patterns=patterns,structures=structures,valid_roi=roi_ok,
                       candle_xs=tuple(c.x for c in completed),
-                      model_width=min(image.width, 1200),
+                      model_width=_model_width(image),
                       lta=lta,ltb=ltb)
 
 
