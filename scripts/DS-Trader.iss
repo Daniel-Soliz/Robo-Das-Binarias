@@ -1,6 +1,6 @@
 ; Compilar com Inno Setup 6 em Windows x64 (scripts/build.ps1)
 #define MyAppName "DS Trader"
-#define MyAppVersion "1.5.0"
+#define MyAppVersion "1.6.0"
 #define MyAppPublisher "DS Digital"
 #define MyAppExeName "DS-Trader.exe"
 
