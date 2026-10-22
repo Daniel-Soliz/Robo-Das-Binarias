@@ -140,6 +140,16 @@ class M1Cycle:
         self.asset = self.source = ""
         return self.status()
 
+    def block_visual(self, timeframe: str) -> M1Status:
+        """Bloqueio explícito: pixels jamais comprovam fronteiras ou quotes M1."""
+        if timeframe != "M1":
+            return self._wait(
+                "AGUARDAR: período informado não é M1; sem sincronização verificável.")
+        return self._wait(
+            "AGUARDAR: captura visual não comprova relógio, ativo, "
+            "fechamento, preço da abertura ou preço do vencimento M1. "
+            "Nenhuma entrada válida é registrada.")
+
     def prepare(self, history: M1History) -> M1Status:
         """Prepara a candidata com historico fechado, antes do minuto-alvo."""
         if self.phase in ("PENDENTE", "ATIVA"):
