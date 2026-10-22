@@ -12,7 +12,8 @@ from ds_trader.storage import Store, export_report
 from ds_trader.explain import explain
 from ds_trader.live_modern_ui import LiveScreenTab
 from ds_trader.theme import apply_theme
-from ds_trader.forex_ui import ForexMarketTab
+from ds_trader.forex_dashboard import ForexDashboard as ForexMarketTab
+from ds_trader.dashboard_shell import DashboardShell, label as dashboard_label
 
 LABELS={
 'left':'Candles à esquerda do pivô','right':'Candles à direita (confirmação)',
@@ -30,23 +31,49 @@ class App:
         self.root=root;self.store=store or Store()
         self.data=None;self.replay=None;self.running=False;self.run_id=None;self.report_view=None;self.timer=None;self.event_view=[]
         self.root.title('DS Trader — Análise e Simulação')
-        self.root.geometry('1320x860');self.root.minsize(1000,700)
         style=apply_theme(root)
-        head=ttk.Frame(root,padding=(16,12));head.pack(fill='x')
-        ttk.Label(head,text='DS Trader',style='Title.TLabel').pack(side='left')
-        ttk.Label(head,text='ANÁLISE E SIMULAÇÃO  •  MONITOR DE GRÁFICOS  •  SEM ORDENS REAIS',style='Muted.TLabel').pack(side='left',padx=20)
-        bar=ttk.Frame(root,padding=(12,0));bar.pack(fill='x')
-        for text,cmd in [('Importar CSV',self.import_file),('Exemplo sintético',self.demo),('Exportar relatório',self.export),('Backup',self.backup)]:
-            ttk.Button(bar,text=text,command=lambda f=cmd:self.guard(f)).pack(side='left',padx=3)
+        self.shell=DashboardShell(root, [
+            ('Importar CSV', lambda:self.guard(self.import_file), '▤'),
+            ('Exemplo sintético', lambda:self.guard(self.demo), '▣'),
+            ('Exportar relatório', lambda:self.guard(self.export), '▧'),
+            ('Backup', lambda:self.guard(self.backup), '☁'),
+        ])
+        self.book=ttk.Notebook(self.shell.content,style='Dashboard.TNotebook')
+        self.book.pack(fill='both',expand=True)
+        self.overview_tab=ttk.Frame(self.book)
+        self.chart_tab=ttk.Frame(self.book)
+        self.forex_tab=ttk.Frame(self.book)
+        self.live_tab=ttk.Frame(self.book)
+        self.events_tab=ttk.Frame(self.book)
+        self.report_tab=ttk.Frame(self.book)
+        self.config_tab=ttk.Frame(self.book)
+        self.help_tab=ttk.Frame(self.book)
+        pages=[
+            ('overview',self.overview_tab,'Visão geral'),
+            ('chart',self.chart_tab,'Gráfico e reprodução'),
+            ('forex',self.forex_tab,'Forex em tempo real'),
+            ('live',self.live_tab,'Tela ao vivo'),
+            ('events',self.events_tab,'Sinais e histórico'),
+            ('reports',self.report_tab,'Resultados'),
+            ('config',self.config_tab,'Configurações'),
+            ('help',self.help_tab,'Ajuda'),
+        ]
+        for _key,frame,text in pages:
+            self.book.add(frame,text=text)
+        self.shell.mount(self.book,{key:frame for key,frame,_ in pages})
         self.mode=tk.StringVar(value='SEM DADOS — importe um CSV ou abra o exemplo')
-        ttk.Label(root,textvariable=self.mode,foreground='#ffcb76').pack(fill='x',padx=15)
-        choose=ttk.Frame(root,padding=(15,3));choose.pack(fill='x')
-        self.asset=ttk.Combobox(choose,state='readonly',width=52);self.asset.pack(side='left')
-        ttk.Label(choose,text='De').pack(side='left');self.start=ttk.Entry(choose,width=24);self.start.pack(side='left')
-        ttk.Label(choose,text='Até').pack(side='left');self.end=ttk.Entry(choose,width=24);self.end.pack(side='left')
-        self.book=ttk.Notebook(root);self.book.pack(fill='both',expand=True,padx=15,pady=8)
-        self.chart_tab=ttk.Frame(self.book);self.forex_tab=ttk.Frame(self.book);self.live_tab=ttk.Frame(self.book);self.events_tab=ttk.Frame(self.book);self.report_tab=ttk.Frame(self.book);self.config_tab=ttk.Frame(self.book);self.help_tab=ttk.Frame(self.book)
-        for frame,label in [(self.chart_tab,'Gráfico e reprodução'),(self.forex_tab,'Forex em tempo real'),(self.live_tab,'Tela ao vivo'),(self.events_tab,'Sinais e histórico'),(self.report_tab,'Resultados'),(self.config_tab,'Configurações'),(self.help_tab,'Ajuda')]:self.book.add(frame,text=label)
+        # Filtros de dados pertencem apenas ao replay, nunca ao painel Forex.
+        replay_head=ttk.Frame(self.chart_tab,padding=(14,10))
+        replay_head.pack(fill='x')
+        ttk.Label(replay_head,textvariable=self.mode,foreground='#ffcb76').pack(anchor='w')
+        choose=ttk.Frame(replay_head);choose.pack(fill='x',pady=(7,0))
+        self.asset=ttk.Combobox(choose,state='readonly',width=47)
+        self.asset.pack(side='left',padx=(0,12))
+        ttk.Label(choose,text='De').pack(side='left')
+        self.start=ttk.Entry(choose,width=23);self.start.pack(side='left',padx=(4,12))
+        ttk.Label(choose,text='Até').pack(side='left')
+        self.end=ttk.Entry(choose,width=23);self.end.pack(side='left',padx=(4,0))
+        self._build_overview()
         controls=ttk.Frame(self.chart_tab);controls.pack(fill='x')
         for text,cmd in [('Iniciar / continuar',self.play),('Pausar',self.pause),('Avançar uma barra',self.step_once),('Encerrar',self.stop)]:
             ttk.Button(controls,text=text,command=lambda f=cmd:self.guard(f)).pack(side='left',padx=3,pady=5)
@@ -77,6 +104,51 @@ class App:
         ttk.Button(self.config_tab,text='Salvar configurações',command=lambda:self.guard(self.save_config)).grid(row=16,column=1,pady=8)
         helptext=tk.Text(self.help_tab,wrap='word',bg='#101c2d',fg='#e9f3ff',insertbackground='#e9f3ff',relief='flat',font=('Segoe UI',10));helptext.pack(fill='both',expand=True);helptext.insert('1.0',HELP+'\nBanco: '+str(self.store.path));helptext.configure(state='disabled')
         self.refresh_saved();root.protocol('WM_DELETE_WINDOW',self.close)
+
+    def _build_overview(self):
+        body=tk.Frame(self.overview_tab,bg='#08111f',padx=27,pady=23)
+        body.pack(fill='both',expand=True)
+        dashboard_label(body,'VISÃO GERAL',size=21,bold=True).pack(anchor='w')
+        dashboard_label(body,'Seu espaço de análise, simulação e monitoramento visual.',
+                        color='#90aecb',size=11).pack(anchor='w',pady=(6,20))
+        cols=tk.Frame(body,bg='#08111f')
+        cols.pack(fill='x')
+        cards=[
+            ('◎','Forex por API',
+             'Candles reais da Twelve Data, caso você forneça uma chave válida.',
+             'forex'),
+            ('▣','Tela ao vivo',
+             'Monitore sua janela do gráfico. A leitura é experimental.',
+             'live'),
+            ('⌁','Reprodução histórica',
+             'Importe CSV ou experimente a estratégia com dados sintéticos.',
+             'chart'),
+        ]
+        for j,(glyph,title,description,destination) in enumerate(cards):
+            item=tk.Frame(cols,bg='#101c2d',highlightbackground='#25435d',
+                          highlightthickness=1,padx=17,pady=17)
+            item.grid(row=0,column=j,sticky='nsew',padx=(0,12))
+            cols.grid_columnconfigure(j,weight=1)
+            dashboard_label(item,glyph,size=25,color='#47bfff').pack(anchor='w')
+            dashboard_label(item,title,size=13,bold=True).pack(anchor='w',pady=(10,5))
+            dashboard_label(item,description,color='#a4bed6',wraplength=280,
+                            size=10).pack(anchor='w',pady=(0,15))
+            tk.Button(item,text='Abrir painel  →',
+                      command=lambda target=destination:self.shell.go(target),
+                      bg='#0a4581',fg='white',activebackground='#0862b8',
+                      activeforeground='white',relief='flat',bd=0,pady=8,
+                      font=('Segoe UI',10,'bold'),cursor='hand2').pack(anchor='w')
+        warning=tk.Frame(body,bg='#111e30',highlightbackground='#25435d',
+                         highlightthickness=1,padx=17,pady=15)
+        warning.pack(fill='x',pady=(22,0))
+        dashboard_label(warning,'ANÁLISE RESPONSÁVEL',bold=True,
+                        size=10,color='#ffd08b').pack(anchor='w')
+        dashboard_label(warning,
+                        'O DS Trader não envia ordens. Pixels da IQ Option não confirmam preço, '
+                        'horário de fechamento nem entradas M1 válidas. '
+                        'Os resultados sintéticos não demonstram rentabilidade.',
+                        color='#bed3e8',size=10,wraplength=1030).pack(anchor='w',pady=(8,0))
+
     def guard(self,func):
         try:func()
         except Exception as e:messagebox.showerror('DS Trader',str(e),parent=self.root)
@@ -220,4 +292,4 @@ def main():
             ctypes.windll.shcore.SetProcessDpiAwareness(2)
         except (AttributeError, OSError):
             pass
-    root=tk.Tk();app=App(root);app.book.select(app.live_tab);root.mainloop()
+    root=tk.Tk();app=App(root);app.book.select(app.forex_tab);root.mainloop()
