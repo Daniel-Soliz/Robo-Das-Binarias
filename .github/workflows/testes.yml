@@ -107,7 +107,7 @@ jobs:
           else
             gh release create "$tag" "${files[@]}" \
               --target "$GITHUB_SHA" \
-              --title "DS Trader 1.6.0 - Windows x64" \
+              --title "DS Trader 1.7.0 - Windows x64" \
               --latest \
               --notes "DS Trader 1.6: nova interface dashboard azul escuro, navegacao lateral, grafico Forex e cards de analise; mantem ciclo M1 educacional com abertura e vencimento verificaveis; a captura visual permanece em AGUARDAR para entrada validada. Captura da janela fixada, instalador e desinstalador. Nao envia ordens nem comprova horarios/cotacoes IQ Option. Janela minimizada ou protegida pode nao fornecer quadros. Sem assinatura digital: nao desative protecoes do Windows."
           fi
