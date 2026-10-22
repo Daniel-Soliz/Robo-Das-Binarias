@@ -92,3 +92,36 @@ fechados, e cancela a hipotese se a barra estiver velha demais.
 **Resultados de testes desta versao NAO confirmados neste documento.**
 Exigir GitHub Actions completamente verde e testes manuais em Windows e no
 grafico real. Ver [SINAIS](SINAIS.md) para criterios de aceite e riscos.
+
+## Ciclo M1 causal: abertura e vencimento (2026-10-22)
+
+O módulo `ds_trader/m1_cycle.py` agora exige uma fonte de quotes com timestamps
+declarada `TIMESTAMPED_QUOTES`, confirmação individual de fechamento dos
+candles (`confirmed_at`) antes da preparação e cotação de referência
+observada na fronteira de abertura M1, da mesma fonte/ativo/período.
+Só compara a referência de entrada ao preço de referência de vencimento
+exatamente 60 segundos depois e se houver prova de fechamento.
+O relógio com fuso e identidade do ativo/período devem permanecer válidos.
+
+Cenários automatizados incluídos/atualizados em
+`tests_ds/test_m1_cycle.py`: hipótese pendente e ativação na fronteira,
+candle ainda aberto, timestamp ausente ou futuro, fonte sem comprovação,
+período diferente de M1, histórico com lacuna, atraso de abertura,
+preço do minuto anterior em vez do preço real de abertura,
+vencimento anterior/incorreto, falha de sincronização, avaliação
+somente após fechamento e ciclo duplicado. O smoke de GUI verifica
+que a aba visual mostra o motivo de AGUARDAR e nenhuma entrada M1 registrada.
+
+**Verificação nesta revisão:** os arquivos atualizados foram relidos
+diretamente do GitHub e conferidas as condições essenciais de segurança,
+a integração da interface e a presença dos testes. **A execução efetiva
+da suíte Python e a compilação do EXE Windows ainda não foram confirmadas
+neste ambiente**. O GitHub Actions executa os testes no push; somente
+uma execução verde e validação local no Windows poderão comprovar
+o instalador e o comportamento empacotado.
+
+A tela IQ Option **não comprova** hora de fechamento, relógio oficial
+ou preços de abertura/vencimento e, portanto, **não habilita** ciclos
+M1 válidos. A Twelve Data devolve candles do seu fornecedor, não
+preços/execuções da IQ Option; os dados não são fundidos automaticamente.
+Nenhuma ordem ou lucro real foi testado/implementado.
