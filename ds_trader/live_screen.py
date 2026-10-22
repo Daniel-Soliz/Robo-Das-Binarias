@@ -283,9 +283,10 @@ class ScreenMonitor:
         self._thread = threading.Thread(target=self._run, daemon=True, name="ds-screen-read-only")
         self._thread.start()
 
-    def stop(self):
+    def stop(self, *, wait=True):
+        """Na interface não bloquear o thread principal esperando callback WGC."""
         self._stop.set()
-        if self._thread is not None and threading.current_thread() is not self._thread:
+        if wait and self._thread is not None and threading.current_thread() is not self._thread:
             self._thread.join(timeout=3)
 
     @staticmethod
