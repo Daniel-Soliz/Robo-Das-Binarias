@@ -2,11 +2,44 @@
 $ErrorActionPreference = 'Stop'
 Set-Location (Join-Path $PSScriptRoot '..')
 
+# Start-Process -Wait sem limite escondia janelas de erro e podia manter o
+# trabalho Windows amarelo indefinidamente. Todas as etapas GUI têm watchdog.
+function Invoke-CheckedProcess {
+    param(
+        [string] $FilePath,
+        [string[]] $Arguments,
+        [int] $TimeoutSeconds,
+        [string] $Description
+    )
+    Write-Host "::group::$Description"
+    Write-Host "Iniciando: $Description; tempo maximo $TimeoutSeconds segundos"
+    $proc = Start-Process -FilePath $FilePath -ArgumentList $Arguments -WorkingDirectory (Get-Location).Path -PassThru
+    try {
+        $finished = $proc.WaitForExit($TimeoutSeconds * 1000)
+        if (-not $finished) {
+            try { $proc.Kill($true) } catch {
+                try { Stop-Process -Id $proc.Id -Force -ErrorAction SilentlyContinue } catch { }
+            }
+            throw "TIMEOUT: $Description nao terminou em $TimeoutSeconds segundos. Consulte smoke-error.txt e build-error.txt."
+        }
+        $proc.Refresh()
+        if ($proc.ExitCode -ne 0) {
+            throw "FALHA: $Description retornou codigo $($proc.ExitCode). Consulte smoke-error.txt e build-error.txt."
+        }
+    } finally {
+        $proc.Dispose()
+        Write-Host "::endgroup::"
+    }
+}
+
 try {
+Write-Host 'FASE 1/8: instalar dependencias de build'
 python -m pip install -r requirements-build.txt
 if ($LASTEXITCODE -ne 0) { throw 'Falha ao instalar dependencias de build' }
+Write-Host 'FASE 2/8: instalar dependencias de captura'
 python -m pip install -r requirements-runtime.txt
 if ($LASTEXITCODE -ne 0) { throw 'Falha ao instalar dependencias da captura de tela' }
+Write-Host 'FASE 3/8: testar modulos e motor'
 python -m unittest discover -s tests_ds -v
 if ($LASTEXITCODE -ne 0) { throw 'Testes do motor falharam' }
 
@@ -15,15 +48,18 @@ foreach ($folder in @('release', 'release-build')) {
 }
 Remove-Item smoke-result.json, smoke-error.txt -ErrorAction SilentlyContinue
 
+Write-Host 'FASE 4/8: compilar PyInstaller'
 python -m PyInstaller --noconfirm --clean --windowed --name DS-Trader main.py
 if ($LASTEXITCODE -ne 0) { throw 'PyInstaller falhou' }
 $exe = (Resolve-Path 'dist/DS-Trader/DS-Trader.exe').Path
-$p = Start-Process -FilePath $exe -ArgumentList '--smoke-test' -WorkingDirectory (Get-Location).Path -Wait -PassThru
-if ($p.ExitCode -ne 0 -or !(Test-Path smoke-result.json)) {
-    throw 'O executavel real falhou no teste de GUI. Consulte smoke-error.txt'
+Write-Host 'FASE 5/8: teste GUI do EXE com watchdog'
+Invoke-CheckedProcess -FilePath $exe -Arguments @('--smoke-test') -TimeoutSeconds 180 -Description 'Smoke teste GUI PyInstaller'
+if (!(Test-Path smoke-result.json)) {
+    throw 'O executavel nao gerou smoke-result.json. Consulte smoke-error.txt'
 }
 
 # Pacote portatil, para quem preferir sem instalacao.
+Write-Host 'FASE 6/8: criar ZIP portatil'
 New-Item -ItemType Directory -Force -Path release | Out-Null
 Copy-Item dist/DS-Trader release/DS-Trader -Recurse -Force
 Copy-Item examples release/examples -Recurse -Force
@@ -37,6 +73,7 @@ $portableHash = (Get-FileHash DS-Trader-Windows-x64.zip -Algorithm SHA256).Hash.
 "$portableHash  DS-Trader-Windows-x64.zip" | Set-Content DS-Trader-Windows-x64.sha256.txt -Encoding Ascii
 
 # Inno Setup cria o assistente tradicional, desinstalador e atalho do desktop.
+Write-Host 'FASE 7/8: compilar instalador Inno Setup'
 $candidateDirs = @()
 if (${env:ProgramFiles(x86)}) { $candidateDirs += (Join-Path ${env:ProgramFiles(x86)} 'Inno Setup 6') }
 if ($env:ProgramFiles) { $candidateDirs += (Join-Path $env:ProgramFiles 'Inno Setup 6') }
@@ -63,14 +100,13 @@ if ($LASTEXITCODE -ne 0) { throw "Erro ao compilar instalador Inno Setup (codigo
 $installer = (Resolve-Path 'release-build/DS-Trader-Setup.exe').Path
 
 # Validacao do fluxo que o usuario vera: instalar, atalho e iniciar o instalado.
-$p = Start-Process -FilePath $installer -ArgumentList @('/VERYSILENT','/SUPPRESSMSGBOXES','/NORESTART','/SP-') -Wait -PassThru
-if ($p.ExitCode -ne 0) { throw "O instalador retornou erro $($p.ExitCode)" }
+Write-Host 'FASE 8/8: instalar e testar aplicacao final'
+Invoke-CheckedProcess -FilePath $installer -Arguments @('/VERYSILENT','/SUPPRESSMSGBOXES','/NORESTART','/SP-') -TimeoutSeconds 300 -Description 'Instalacao silenciosa Windows'
 $installed = Join-Path $env:LOCALAPPDATA 'Programs\DS Trader\DS-Trader.exe'
 if (!(Test-Path $installed)) { throw "Executavel instalado nao encontrado: $installed" }
 $desktopShortcut = Join-Path ([Environment]::GetFolderPath('Desktop')) 'DS Trader.lnk'
 if (!(Test-Path $desktopShortcut)) { throw 'Atalho de Area de Trabalho nao foi criado' }
-$p = Start-Process -FilePath $installed -ArgumentList '--smoke-test' -WorkingDirectory (Get-Location).Path -Wait -PassThru
-if ($p.ExitCode -ne 0) { throw 'Aplicativo instalado falhou no teste real' }
+Invoke-CheckedProcess -FilePath $installed -Arguments @('--smoke-test') -TimeoutSeconds 180 -Description 'Smoke teste EXE instalado'
 if (!(Test-Path smoke-result.json)) { throw 'Relatorio do teste GUI ausente' }
 Copy-Item smoke-result.json release-build/smoke-result.json -Force
 
@@ -79,6 +115,10 @@ $installerHash = (Get-FileHash $installer -Algorithm SHA256).Hash.ToLowerInvaria
 Write-Host 'BUILD CONCLUIDO: DS-Trader-Setup.exe + pacote portatil + SHA256'
 
 } catch {
+    if (Test-Path smoke-error.txt) {
+        Write-Host 'LOG DE ERRO DO EXECUTAVEL:'
+        Get-Content smoke-error.txt | Select-Object -Last 90 | ForEach-Object { Write-Host $_ }
+    }
     $details = ($_ | Out-String) + [Environment]::NewLine + $_.ScriptStackTrace
     $details | Set-Content -Path build-error.txt -Encoding UTF8
     Write-Error "BUILD FALHOU. Detalhes gravados em build-error.txt: $details" -ErrorAction Continue
