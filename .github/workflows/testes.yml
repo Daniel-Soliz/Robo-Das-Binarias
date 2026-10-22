@@ -31,6 +31,7 @@ jobs:
   windows:
     needs: core
     runs-on: windows-2022
+    timeout-minutes: 22
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -39,6 +40,7 @@ jobs:
           architecture: x64
       - name: Compilar aplicativo, instalador e testar o fluxo real
         shell: pwsh
+        timeout-minutes: 20
         run: ./scripts/build.ps1
       - uses: actions/upload-artifact@v4
         with:
