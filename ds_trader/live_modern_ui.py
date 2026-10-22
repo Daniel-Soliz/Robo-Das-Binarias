@@ -13,6 +13,8 @@ from tkinter import ttk, messagebox
 from ds_trader.live_ui import RegionPicker
 from ds_trader.live_screen import ScreenMonitor
 from ds_trader.live_presentation import presentation_for, screen_region_is_obscured
+from ds_trader.window_capture import (WindowCaptureError, select_window_for_region,
+                                      WindowTarget)
 
 
 BG = "#08111f"
@@ -60,6 +62,7 @@ class LiveScreenTab:
     def __init__(self, parent, root):
         self.root = root
         self.region = None
+        self.window_target: WindowTarget | None = None
         self.monitor = None
         self.active = False
         self.after_id = None
@@ -91,7 +94,7 @@ class LiveScreenTab:
         heading.pack(side="left", fill="x", expand=True)
         _label(heading, "MONITOR DE GRÁFICOS", size=20, weight="bold").pack(anchor="w")
         _label(
-            heading, "Veja seu gráfico à esquerda e a análise técnica ao lado · somente leitura",
+            heading, "Janela do gráfico fixada na prévia, mesmo se outros apps ficarem na frente · somente leitura",
             size=10, color=MUTED,
         ).pack(anchor="w", pady=(3, 0))
         self.online_badge = _label(
@@ -103,7 +106,7 @@ class LiveScreenTab:
         toolbar = tk.Frame(container, bg=PANEL, highlightbackground=EDGE,
                            highlightthickness=1, padx=12, pady=10)
         toolbar.pack(fill="x", pady=(0, 13))
-        self.pick_btn = _button(toolbar, "⌖  Selecionar gráfico", self.select)
+        self.pick_btn = _button(toolbar, "⌖  Fixar janela do gráfico", self.select)
         self.pick_btn.pack(side="left", padx=(0, 9))
         self.start_btn = _button(toolbar, "▶  Iniciar análise", self.start, primary=True)
         self.start_btn.configure(state="disabled")
@@ -152,7 +155,7 @@ class LiveScreenTab:
                textvariable=self.last_update).pack(anchor="w", pady=(0, 5))
         _label(
             left_bottom,
-            "Dica: deixe o gráfico e o DS Trader lado a lado, sem sobreposição.",
+            "Janela fixada: pode ficar atrás do DS Trader; não a minimize nem feche.",
             size=9, color=CYAN,
         ).pack(anchor="w", pady=(0, 7))
 
@@ -212,7 +215,8 @@ class LiveScreenTab:
         notice.pack(fill="x", pady=(12, 0))
         _label(
             notice,
-            "LEITURA EXPERIMENTAL  ·  CALL/PUT não é sinal validado, "
+            "CAPTURA DE JANELA  ·  A imagem pode ficar fixa se o navegador parar de renderizar. "
+            "CALL/PUT não é sinal validado, "
             "não fornece horário de entrada, vencimento nem probabilidade de acerto.",
             size=9, color="#aac0d5", bg="#142436", wraplength=1050,
         ).pack(anchor="w")
@@ -259,21 +263,41 @@ class LiveScreenTab:
         try:
             # Esconde o DS Trader antes de selecionar para não capturar a própria janela.
             self._picker = RegionPicker(
-                self.root, self.selected, on_cancel=self._cancel_selection
+                self.root, self._selected_from_picker, on_cancel=self._cancel_selection
             )
             self.root.withdraw()
             self._picker.window.lift()
             self._picker.window.focus_force()
-            self.status.set("Arraste somente sobre os candles. Esc cancela.")
+            self.status.set("Arraste dentro da janela do navegador que deseja fixar. Esc cancela.")
         except Exception as exc:
             self._restore_window()
             messagebox.showerror("Selecionar gráfico", str(exc), parent=self.root)
 
-    def selected(self, region):
+    def _selected_from_picker(self, region):
+        # O overlay de selecao ja foi destruido e o app continua oculto.
+        # Assim a ordem Z mostra a janela real por tras da selecao.
+        try:
+            target = select_window_for_region(region)
+        except WindowCaptureError as exc:
+            self._restore_window()
+            self.region = None
+            self.window_target = None
+            self.start_btn.configure(state="disabled")
+            self.status.set(str(exc))
+            messagebox.showwarning("Fixar janela do grafico", str(exc), parent=self.root)
+            return
+        self.selected(region, window_target=target)
+
+    def selected(self, region, *, window_target: WindowTarget | None = None):
         self._restore_window()
         self.region = region
-        self.meta_text.set(f"{region.width} × {region.height} px")
-        self.status.set("Área escolhida · Clique em Iniciar análise")
+        self.window_target = window_target
+        self.meta_text.set(
+            f"{window_target.title[:32]} · {region.width}×{region.height} px"
+            if window_target else f"{region.width} × {region.height} px"
+        )
+        self.status.set("Janela fixada · Clique em Iniciar análise" if window_target else
+                        "Área escolhida · Clique em Iniciar análise")
         self.start_btn.configure(state="normal")
         self.last_frame = None
         self.preview_image = None
@@ -291,19 +315,28 @@ class LiveScreenTab:
             messagebox.showinfo("DS Trader", "Selecione primeiro a região do gráfico.",
                                 parent=self.root)
             return
-        self.monitor = ScreenMonitor(self.region, interval_seconds=1.2)
+        # No Windows não voltar silenciosamente a gravar o desktop inteiro.
+        import sys
+        if sys.platform == "win32" and self.window_target is None:
+            messagebox.showinfo("DS Trader", "Fixe primeiro a janela do grafico pelo botao.",
+                                parent=self.root)
+            return
+        self.monitor = ScreenMonitor(self.region, interval_seconds=1.2,
+                                     window_target=self.window_target)
         self.active = True
         self.pick_btn.configure(state="disabled")
         self.start_btn.configure(state="disabled")
         self.stop_btn.configure(state="normal")
         self.online_badge.configure(text="●  MONITORAMENTO ATIVO", fg=GREEN)
         self.preview_marker.configure(text="●  RECEBENDO IMAGENS", fg=CYAN)
-        self.status.set("Captura local iniciada")
+        self.status.set("Captura da janela fixada iniciada" if self.window_target else
+                        "Captura local iniciada")
         self.monitor.start()
         self.poll()
 
     def _present(self, result):
-        obscured = self._overlaps_selected_region()
+        # Em captura WGC outras janelas na frente nao encobrem a origem.
+        obscured = self.window_target is None and self._overlaps_selected_region()
         state = presentation_for(result, obscured=obscured)
         self.next_opinion.set(state.side)
         self.signal_label.configure(fg=SIDE_COLORS[state.side])
@@ -311,6 +344,8 @@ class LiveScreenTab:
         self.signal_subtitle.set(state.subtitle)
         self.status.set(state.status)
         self.quality_status.set("Gráfico encoberto" if obscured else
+                                "Janela fixada; sem horário verificado"
+                                if self.window_target and result.valid_roi else
                                 "Recorte legível; sem horário verificado"
                                 if result.valid_roi else "Leitura insuficiente")
         self.pattern_text.set(state.pattern)

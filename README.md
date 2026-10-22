@@ -4,11 +4,26 @@ Aplicativo desktop em português para estudar **rompimento e reteste**. Importa 
 
 O modo de tela detecta geometricamente algumas velas verde/vermelho, exibe a região selecionada e descreve somente movimento **visual relativo**. Não consegue obter preços, horários de negociação ou vencimentos oficiais dos pixels; por isso a tela mantém **AGUARDAR** e exibe estruturas técnicas estimadas, sem entrada validada. Não alimenta o simulador como se fossem cotações reais.
 
-## Interface moderna DS Trader 1.3
+## Interface moderna DS Trader 1.4
 
 A guia **Tela ao vivo** ganhou um painel escuro de duas colunas: **previsualizacao do grafico a esquerda** e estado **AGUARDAR**, padroes, LTA/LTB e explicacao a direita. O tema das outras abas tambem foi modernizado, mantendo o software nativo do Windows sem exigir nova biblioteca de interface.
 
-Ao clicar **Selecionar grafico**, o DS Trader oculta sua janela temporariamente. Se, durante a analise, sua janela cobrir a regiao do navegador monitorada, o programa mostra **AGUARDAR — GRAFICO ENCOBERTO**, pois nao consegue enxergar atraves de outras janelas. Use navegador e DS Trader lado a lado ou em monitores diferentes.
+### Fixar a janela do grafico (Windows 10/11)
+
+Na versao 1.4, clique em **Fixar janela do grafico**, arraste uma area
+**dentro da janela do navegador** e clique **Iniciar analise**. O DS Trader
+identifica a janela escolhida e passa a captar a area relativa a ela com a
+API Windows Graphics Capture, mesmo que outra janela fique na frente. Assim
+nao aparece o efeito de recursao com o DS Trader capturando a propria tela.
+
+Mantenha a janela do navegador **aberta e nao minimizada**. A captura nao
+garante atualizacao quando a aplicacao para de desenhar quadros, quando a
+janela e minimizada ou em casos de protecao de conteudo. Se mudar bastante
+o tamanho/escala do navegador, selecione novamente. Se a captura falhar,
+mostra uma mensagem e interrompe; nao passa automaticamente a capturar o
+desktop por cima. A versao fixada nao certifica horario nem preco da IQ Option.
+
+Ao clicar **Fixar janela do grafico**, o DS Trader oculta sua janela temporariamente para que voce selecione uma area dentro da janela do navegador. Depois disso, a previa usa a janela fixada como origem, mesmo quando outra janela fica na frente. Na captura antiga de desktop, sobreposicoes continuam bloqueadas.
 
 O periodo M1/M5/M15 no painel e **informado manualmente**, nao reconhecido automaticamente. O leitor visual nao confirma o momento exato de fechamento da proxima vela e **nao libera CALL/PUT como entrada**.
 
@@ -71,12 +86,12 @@ Documentacao do provedor: https://twelvedata.com/docs e https://support.twelveda
 ## Monitorar seu gráfico na tela em tempo real (leitura visual)
 
 1. Abra o gráfico em seu navegador/corretora, preferencialmente com fundo escuro e candles verdes/vermelhos visíveis.
-2. No DS Trader abra a guia **Tela ao vivo**. Clique em **Selecionar área do gráfico**.
+2. No DS Trader abra a guia **Tela ao vivo**. Clique em **Fixar janela do gráfico**.
 3. Arraste o mouse apenas sobre os candles, sem menus, login ou informações pessoais. Pressione **Esc** para cancelar.
 4. Clique em **Iniciar monitoramento**: a cada aproximadamente 1,2 segundo o aplicativo atualiza uma prévia e a observação aproximada de direção visual.
 5. Clique em **Parar** a qualquer momento. A captura não começa sozinha; frames são mantidos somente na memória e não são salvos nem transmitidos.
 
-**Limitações:** cores diferentes, linhas/indicadores sobrepostos, janelas cobertas, mudanças de escala, lag, velas sobrepostas e monitores com DPI especial podem impedir/alterar a leitura. A última vela é tratada como potencialmente aberta. Não usar esse modo como fonte de preço ou prova de rentabilidade. O modo CSV mantém simulação independente.
+**Limitações:** cores diferentes, linhas/indicadores sobrepostos, janela minimizada, conteúdo protegido, mudanças de escala, lag, velas sobrepostas e monitores com DPI especial podem impedir/alterar a leitura. A última vela é tratada como potencialmente aberta. Não usar esse modo como fonte de preço ou prova de rentabilidade. O modo CSV mantém simulação independente.
 
 ## Baixar e instalar no Windows 10/11 (64 bits)
 
@@ -103,7 +118,7 @@ Instale **Python 3.11.9 x64** com Tcl/Tk (distribuição oficial Windows). Na pa
 py -3.11 main.py
 ```
 
-Para rodar a partir do código com o modo de tela, instale as bibliotecas de captura com `py -3.11 -m pip install -r requirements-runtime.txt` antes de executar. Bibliotecas fixadas: `mss==9.0.2` e `Pillow==11.0.0`. No instalador Windows já vêm incluídas. O modo CSV e o núcleo da simulação não precisam de OCR, conta, chave de IA nem banco remoto.
+Para rodar a partir do código com o modo de tela, instale as bibliotecas com `py -3.11 -m pip install -r requirements-runtime.txt` antes de executar. Bibliotecas fixadas: `mss==9.0.2`, `Pillow==11.0.0`, `windows-capture==2.0.1` e suas dependencias Windows fixadas. No instalador Windows ja vêm incluidas. O modo CSV e o núcleo da simulação não precisam de OCR, conta, chave de IA nem banco remoto.
 
 ## Gerar o pacote Windows
 

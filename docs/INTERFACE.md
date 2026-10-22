@@ -1,4 +1,4 @@
-# Interface DS Trader 1.3 — painel moderno
+# Interface DS Trader 1.4 — painel moderno e janela fixada
 
 ## Alterações
 
@@ -10,21 +10,25 @@ A simulação histórica, Forex por API e banco SQLite foram preservados.
 
 ## Uso
 
-1. Deixe o gráfico da IQ Option visível no navegador. Posicione janelas
-   lado a lado ou use dois monitores, sem que o DS Trader oculte o gráfico.
-2. Clique em Selecionar gráfico. O DS Trader se oculta temporariamente para
-   facilitar a seleção. Arraste sobre SOMENTE os candles, sem menus, saldo,
+1. Deixe a janela do gráfico visível no navegador durante a **seleção inicial**.
+2. Clique em Fixar janela do gráfico. O DS Trader se oculta temporariamente para
+   facilitar a seleção. Arraste dentro da janela-alvo SOMENTE sobre os candles, sem menus, saldo,
    botões CALL/PUT ou barra do navegador. Esc cancela a seleção.
-3. De volta ao DS Trader, clique em Iniciar análise. A prévia e a lateral
-   serão atualizadas aproximadamente a cada 1,2 segundo.
-4. Se a janela do DS Trader estiver sobrepondo mais de uma pequena parte da
-   região selecionada, o painel mostrará AGUARDAR — GRÁFICO ENCOBERTO.
-   Mova/redimensione as janelas; o programa não pode ver através delas.
+3. De volta ao DS Trader, confirme o titulo abreviado da janela fixada e clique
+   em Iniciar análise. A prévia e a lateral atualizam com quadros recebidos
+   daquela janela, mesmo se outro aplicativo estiver por cima.
+4. Nao minimize nem feche a janela capturada. Se o aplicativo parar de desenhar
+   quadros, o DS Trader informa e interrompe em vez de exibir imagem velha
+   como se estivesse ao vivo. Ao redimensionar, reconfigure a area se necessario.
 5. Clique em Parar para interromper a captura. Nenhuma imagem é enviada.
 
 O período M1/M5/M15 no painel é uma informação inserida manualmente,
 NÃO um reconhecimento automático do candle da IQ Option. A captura
 visual não confirma o instante exato do fechamento ou expiração.
+
+A fixacao usa Windows Graphics Capture e depende de suporte do Windows/GPU;
+a disponibilidade e verificada ao iniciar. Nao existe garantia de capturar
+conteudo protegido ou de receber quadros de uma janela minimizada.
 
 ## Limites
 
@@ -41,8 +45,9 @@ levam a AGUARDAR. O monitor não substitui cotações oficiais com timestamps.
 - Rodar smoke test de interface no Windows (scripts/gui_smoke.py), exigindo
   tema, painel, seleção e estado AGUARDAR ao interromper.
 - Compilar e testar instalador do Windows com scripts/build.ps1 e Inno Setup.
-- Fazer validação manual em Windows 10/11, com navegador e DS Trader lado
-  a lado, trocar zoom/período, selecionar outro gráfico, testar Esc e Parar.
+- Fazer validação manual em Windows 10/11: selecionar navegador, cobri-lo com
+  outra janela, verificar que a previa continua no alvo, mover a janela,
+  minimizar/restaurar, fechar, trocar zoom/período e testar Esc e Parar.
 - Não alegar executável pronto sem confirmação de CI verde e publicação.
 
 A atualização foi projetada para instalar por cima da anterior, com o

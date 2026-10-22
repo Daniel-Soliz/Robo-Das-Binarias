@@ -8,6 +8,7 @@ import threading
 import time
 from statistics import median
 from ds_trader.next_candle import evaluate_next
+from ds_trader.window_capture import WindowTarget, WindowCaptureError, check_target_window
 
 # Nao importar PIL/mss no modulo: CSV e testes funcionam sem captura.
 
@@ -221,6 +222,24 @@ def annotate_preview(frame, result):
     return canvas
 
 
+def crop_window_image(frame, target: WindowTarget):
+    """Recorte relativo a janela, imune a movimento/oclusao no desktop."""
+    left, top, right, bottom = target.bounds
+    if right <= left or bottom <= top or frame.width < 180 or frame.height < 120:
+        raise WindowCaptureError("Quadro da janela sem dimensoes validas.")
+    sx = frame.width / (right - left)
+    sy = frame.height / (bottom - top)
+    if abs(sx - sy) > max(sx, sy) * .12:
+        raise WindowCaptureError("A proporcao da janela mudou. Selecione o grafico novamente.")
+    x0, y0, x1, y1 = target.crop
+    box = (round(x0 * sx), round(y0 * sy), round(x1 * sx), round(y1 * sy))
+    if (box[0] < 0 or box[1] < 0 or box[2] > frame.width or
+            box[3] > frame.height or box[2] - box[0] < 180 or
+            box[3] - box[1] < 120):
+        raise WindowCaptureError("Recorte saiu dos limites da janela. Selecione novamente.")
+    return frame.crop(box)
+
+
 
 class ScreenMonitor:
     """Captura sob acao explicita do usuario; threads nao acessam widgets Tk.
@@ -228,10 +247,12 @@ class ScreenMonitor:
     Entrega imagem em memoria e avaliacao em fila de capacidade 1. Nenhum frame
     e salvo em disco, transmitido ou enviado para a corretora.
     """
-    def __init__(self, region: Region, interval_seconds: float = 1.2):
+    def __init__(self, region: Region, interval_seconds: float = 1.2,
+                 window_target: WindowTarget | None = None):
         if not (0.5 <= interval_seconds <= 10):
             raise ValueError("Intervalo de atualizacao invalido")
         self.region = region
+        self.window_target = window_target
         self.interval_seconds = interval_seconds
         self.results = Queue(maxsize=1)
         self._stop = threading.Event()
@@ -269,43 +290,103 @@ class ScreenMonitor:
 
     def _run(self):
         try:
-            from mss import mss
-            from PIL import Image
-            with mss() as capture:
-                virtual = capture.monitors[0]
-                r = self.region
-                if (r.left < virtual["left"] or r.top < virtual["top"] or
-                    r.left + r.width > virtual["left"] + virtual["width"] or
-                    r.top + r.height > virtual["top"] + virtual["height"]):
-                    raise ValueError("A area selecionada ultrapassa a tela disponivel")
-                while not self._stop.is_set():
-                    began = time.monotonic()
-                    shot = capture.grab(r.mss_rect())
-                    frame = Image.frombytes("RGB", shot.size, shot.rgb)
-                    result = assess(frame)
-                    if result.valid_roi and len(result.candle_xs)>5:
-                        gaps=[b-a for a,b in zip(result.candle_xs,result.candle_xs[1:])]
-                        step=median(gaps)
-                        signature=(result.detected,round(step),
-                                   round(result.candle_xs[-1]/max(1,step/2)))
-                        if signature==self._last_signature:
-                            self._stable_reads+=1
-                        else:
-                            self._last_signature=signature
-                            self._stable_reads=1
-                        if self._stable_reads<3:
-                            result=replace(
-                                result,bias="AGUARDAR",
-                                explanation=result.explanation+
-                                " Aguardando tres leituras geometricamente estaveis."
-                            )
-                    else:
-                        self._last_signature=None
-                        self._stable_reads=0
-                    frame.thumbnail((1050, 590))
-                    frame=annotate_preview(frame,result)
-                    self._emit((result, frame))
-                    self._stop.wait(max(0, self.interval_seconds - (time.monotonic() - began)))
+            if self.window_target is not None:
+                self._run_window()
+            else:
+                self._run_desktop()
         except Exception as exc:
             # Nao registra pixels, janela, titulo ou dados de conta.
             self._emit(("error", f"Captura interrompida: {type(exc).__name__}: {exc}"))
+
+    def _process_frame(self, frame):
+        result = assess(frame)
+        if result.valid_roi and len(result.candle_xs)>5:
+            gaps=[b-a for a,b in zip(result.candle_xs,result.candle_xs[1:])]
+            step=median(gaps)
+            signature=(result.detected,round(step),
+                       round(result.candle_xs[-1]/max(1,step/2)))
+            if signature==self._last_signature:
+                self._stable_reads+=1
+            else:
+                self._last_signature=signature
+                self._stable_reads=1
+            if self._stable_reads<3:
+                result=replace(
+                    result,bias="AGUARDAR",
+                    explanation=result.explanation+
+                    " Aguardando tres leituras geometricamente estaveis."
+                )
+        else:
+            self._last_signature=None
+            self._stable_reads=0
+        frame.thumbnail((1050, 590))
+        frame=annotate_preview(frame,result)
+        self._emit((result, frame))
+
+    def _run_desktop(self):
+        """Legado: captura de desktop somente para testes/modo sem janela."""
+        from mss import mss
+        from PIL import Image
+        with mss() as capture:
+            virtual = capture.monitors[0]
+            r = self.region
+            if (r.left < virtual["left"] or r.top < virtual["top"] or
+                r.left + r.width > virtual["left"] + virtual["width"] or
+                r.top + r.height > virtual["top"] + virtual["height"]):
+                raise ValueError("A area selecionada ultrapassa a tela disponivel")
+            while not self._stop.is_set():
+                began = time.monotonic()
+                shot = capture.grab(r.mss_rect())
+                frame = Image.frombytes("RGB", shot.size, shot.rgb)
+                self._process_frame(frame)
+                self._stop.wait(max(0, self.interval_seconds - (time.monotonic() - began)))
+
+    def _run_window(self):
+        """Windows Graphics Capture: pega o HWND, nao pixels de janelas por cima."""
+        from PIL import Image
+        try:
+            from windows_capture import WindowsCapture
+        except ImportError as exc:
+            raise WindowCaptureError("Modulo windows-capture ausente no instalador.") from exc
+        target = self.window_target
+        check_target_window(target)
+        capture = WindowsCapture(window_hwnd=target.hwnd, cursor_capture=False,
+                                 draw_border=None,
+                                 minimum_update_interval=int(self.interval_seconds*1000))
+        closed = threading.Event()
+        failed = threading.Event()
+        last_frame = [time.monotonic()]
+
+        @capture.event
+        def on_frame_arrived(frame, capture_control):
+            if self._stop.is_set():
+                capture_control.stop()
+                return
+            try:
+                check_target_window(target)
+                # Frame WGC e BGRA. A copia e feita ENQUANTO o buffer esta vivo.
+                picture = Image.frombytes("RGB", (frame.width, frame.height),
+                                          frame.frame_buffer.tobytes(), "raw", "BGRX")
+                cut = crop_window_image(picture, target)
+                last_frame[0] = time.monotonic()
+                self._process_frame(cut)
+            except Exception as exc:
+                self._emit(("error", f"Falha na janela fixada: {type(exc).__name__}: {exc}"))
+                failed.set()
+                capture_control.stop()
+
+        @capture.event
+        def on_closed():
+            closed.set()
+
+        controller = capture.start_free_threaded()
+        try:
+            while not self._stop.wait(.5) and not failed.is_set():
+                check_target_window(target)
+                if closed.is_set() or controller.is_finished():
+                    raise WindowCaptureError("A captura da janela foi encerrada. Selecione novamente.")
+                if time.monotonic() - last_frame[0] > 12:
+                    raise WindowCaptureError("A janela deixou de fornecer quadros novos; "
+                                             "restaure e confira o grafico antes de continuar.")
+        finally:
+            controller.stop()

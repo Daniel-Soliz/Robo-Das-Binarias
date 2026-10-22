@@ -15,8 +15,12 @@ def run():
         assert app.screen_view.next_opinion.get() == 'AGUARDAR', 'Sinal inicial inseguro'
         assert app.screen_view.start_btn.cget('state') == 'disabled', 'Iniciar sem selecionar grafico'
         from ds_trader.live_screen import Region
-        app.screen_view.selected(Region(0, 0, 700, 400))
+        from ds_trader.window_capture import WindowTarget
+        sample_target=WindowTarget(123, 456, "Navegador de teste", (0,0,800,500),
+                                   (0,0,700,400))
+        app.screen_view.selected(Region(0, 0, 700, 400),window_target=sample_target)
         assert app.screen_view.start_btn.cget('state') == 'normal', 'Selecionar nao habilitou iniciar'
+        assert app.screen_view.window_target == sample_target, 'Janela nao foi fixada'
         app.screen_view.stop()
         assert app.screen_view.next_opinion.get() == 'AGUARDAR', 'Parar nao limpou sinal'
         assert app.forex_view is not None, 'Aba Forex ausente'

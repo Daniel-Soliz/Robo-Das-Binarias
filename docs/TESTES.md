@@ -1,5 +1,22 @@
 # Relatório de testes — 19/10/2026
 
+## Atualizacao — 22/10/2026 (captura de janela fixada, versao 1.4)
+
+Nova escolha automatica da janela sob o recorte com exclusao do processo
+DS Trader. Captura Windows Graphics Capture associada ao HWND, com recorte
+relativo a janela, sem trocar de fonte caso outro aplicativo sobreponha.
+Erros de dependencia, janela fechada/minimizada e quadros parados interrompem
+a captura. Um recorte que nao caiba numa janela inteira e rejeitado.
+
+`tests_ds/test_window_capture.py` cobre: ordem Z, exclusao de autocaptura,
+recorte e escala, selecao rejeitada, stub de Windows Graphics Capture que
+comprova uso do HWND em vez do desktop e ausencia de fallback silencioso.
+
+**Ainda nao testado neste ambiente Linux:** janela real Chrome/IQ Option
+obscurecida por outra no Windows, GPU/DPI especificos e conteudo protegido.
+O build Windows testa empacotamento/interface; a prova de sobreposicao
+real depende de teste manual no computador do usuario.
+
 ## Atualizacao — 21/10/2026 (ciclo de teste M1)
 
 O ciclo cronologico isolado de `ds_trader/m1_cycle.py` ganhou testes em
