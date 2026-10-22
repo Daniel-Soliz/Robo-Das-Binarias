@@ -4,6 +4,21 @@ Aplicativo desktop em português para estudar **rompimento e reteste**. Importa 
 
 O modo de tela detecta geometricamente algumas velas verde/vermelho, exibe a região selecionada e descreve somente movimento **visual relativo**. Não consegue obter preços, horários de negociação ou vencimentos oficiais dos pixels; por isso a tela mantém **AGUARDAR** e exibe estruturas técnicas estimadas, sem entrada validada. Não alimenta o simulador como se fossem cotações reais.
 
+## Dashboard DS Trader 1.6 — nova navegação e painel Forex
+
+A interface Windows foi redesenhada conforme o modelo visual fornecido:
+barra lateral com oito páginas, cabeçalho de ações, filtros Forex organizados
+no topo, gráfico central e cartões **Próxima vela, Tendência, LTA/LTB e
+Suporte/Resistência** na lateral direita. O rodapé acompanha o estado da
+fonte e da conexão.
+
+A **Visão geral** contém atalhos funcionais. Importação de CSV, reprodução,
+exportação de relatório, backup e monitoramento visual foram preservados.
+Sem chave Twelve Data ou com dados atrasados, o Forex mostra AGUARDAR.
+A grade ilustrativa não representa cotações reais.
+
+Veja [estrutura, operações e testes do dashboard](docs/DASHBOARD_1_6.md).
+
 ## Interface moderna DS Trader 1.4
 
 A guia **Tela ao vivo** ganhou um painel escuro de duas colunas: **previsualizacao do grafico a esquerda** e estado **AGUARDAR**, padroes, LTA/LTB e explicacao a direita. O tema das outras abas tambem foi modernizado, mantendo o software nativo do Windows sem exigir nova biblioteca de interface.
