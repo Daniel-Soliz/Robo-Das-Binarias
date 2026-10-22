@@ -84,6 +84,10 @@ class App:
         self.canvas.bind('<Configure>',lambda e:self.draw())
         self.forex_view=ForexMarketTab(self.forex_tab,self.root)
         self.screen_view=LiveScreenTab(self.live_tab,self.root)
+        self.forex_view.status.trace_add('write',lambda *_:self._refresh_footer())
+        self.screen_view.status.trace_add('write',lambda *_:self._refresh_footer())
+        self.book.bind('<<NotebookTabChanged>>',
+                       lambda _evt:self.root.after_idle(self._refresh_footer),add='+')
         ttk.Label(self.chart_tab,text='Últimos 90 candles já revelados • horários UTC • regiões azuis • preços sem interpolação').pack()
         self.tree=ttk.Treeview(self.events_tab,columns=('time','asset','phase','status','direction'),show='headings',height=12)
         for key,label in [('time','Horário UTC'),('asset','Ativo'),('phase','Período'),('status','Evento'),('direction','Direção')]:self.tree.heading(key,text=label)
@@ -148,6 +152,18 @@ class App:
                         'horário de fechamento nem entradas M1 válidas. '
                         'Os resultados sintéticos não demonstram rentabilidade.',
                         color='#bed3e8',size=10,wraplength=1030).pack(anchor='w',pady=(8,0))
+
+    def _refresh_footer(self):
+        if not self.root.winfo_exists():return
+        selected=self.book.select()
+        if selected==str(self.forex_tab):
+            status=self.forex_view.status.get()
+            self.shell.connection.set('●  '+status[:75])
+        elif selected==str(self.live_tab):
+            status=self.screen_view.status.get()
+            self.shell.connection.set('●  '+status[:75])
+        elif selected==str(self.chart_tab):
+            self.shell.connection.set('●  Reprodução local · sem ordens reais')
 
     def guard(self,func):
         try:func()
