@@ -5,11 +5,29 @@ from pathlib import Path
 from ds_trader.ui import App
 from ds_trader.storage import Store, export_report
 import tkinter as tk
+import faulthandler
+import time
+
+
+def _checkpoint(stage):
+    with open('smoke-progress.txt','a',encoding='utf-8') as output:
+        output.write(f'{time.strftime("%H:%M:%S")} | {stage}\n')
+        output.flush()
 
 def run():
+    Path('smoke-progress.txt').write_text('',encoding='utf-8')
+    diag = open('smoke-trace.txt','w',encoding='utf-8')
+    faulthandler.dump_traceback_later(55,repeat=True,file=diag)
+    _checkpoint('smoke iniciado')
     with tempfile.TemporaryDirectory() as tmp:
-        root=tk.Tk();store=Store(Path(tmp)/'state.sqlite3');app=App(root,store)
+        _checkpoint('antes Tk()')
+        root=tk.Tk();store=Store(Path(tmp)/'state.sqlite3')
+        _checkpoint('antes App()')
+        app=App(root,store)
+        _checkpoint('apos App()')
+        _checkpoint('antes root.update()')
         root.update()
+        _checkpoint('apos root.update()')
         # A nova shell deve substituir a barra de abas antiga por navegacao real.
         assert app.shell.current == 'forex', 'Pagina inicial do dashboard nao e Forex'
         assert len(app.shell.nav_buttons) == 8, 'Navegacao lateral incompleta'
@@ -52,18 +70,31 @@ def run():
         assert app.forex_view is not None, 'Aba Forex ausente'
         assert not app.forex_view.running, 'Forex nao pode conectar automaticamente'
         assert not app.screen_view.active, 'Captura nao pode iniciar sem consentimento'
+        _checkpoint('antes app.demo()')
         app.demo();app.new_replay()
+        _checkpoint('apos app.demo()')
+        _checkpoint('antes 15 updates')
         for _ in range(15):app.advance();root.update()
+        _checkpoint('apos 15 updates')
         assert app.canvas.find_all(), 'Gráfico não desenhado'
         app.pause();assert not app.running
+        _checkpoint('antes replay ate fim')
         while not app.replay.finished:app.advance()
+        _checkpoint('apos replay ate fim')
+        _checkpoint('antes root.update() final')
         root.update();assert app.replay.trades
+        _checkpoint('apos root.update() final')
         app.refresh_saved();app.load_saved()
         report=app.report_view
         export_report(report,Path(tmp)/'report.json')
         assert (Path(tmp)/'report_trades.csv').exists()
+        _checkpoint('antes app.close()')
         app.close()
+        _checkpoint('apos app.close()')
         reopened=Store(Path(tmp)/'state.sqlite3');assert reopened.runs();reopened.close()
+        faulthandler.cancel_dump_traceback_later()
+        diag.close()
+        _checkpoint('smoke concluido')
         return {'gui':'passed','candles':report['processed'],'operations':len(report['trades']),'persistence':'passed','export':'passed','forex_tab':'passed'}
 
 if __name__=='__main__':print(json.dumps(run()))
