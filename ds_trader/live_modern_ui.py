@@ -12,6 +12,7 @@ from tkinter import ttk, messagebox
 
 from ds_trader.live_ui import RegionPicker
 from ds_trader.live_screen import ScreenMonitor
+from ds_trader.m1_cycle import M1Cycle
 from ds_trader.live_presentation import presentation_for, screen_region_is_obscured
 from ds_trader.window_capture import (WindowCaptureError, select_window_for_region,
                                       WindowTarget)
@@ -69,6 +70,10 @@ class LiveScreenTab:
         self.preview_image = None
         self.last_frame = None
         self.timeframe = tk.StringVar(value="M1")
+        self.m1_cycle = M1Cycle()
+        self.cycle_message = tk.StringVar(
+            value=self.m1_cycle.block_visual("M1").reason
+        )
         self.status = tk.StringVar(value="DESLIGADO · Selecione a área do gráfico")
         self.next_opinion = tk.StringVar(value="AGUARDAR")
         self.structures = tk.StringVar(value="Aguardando análise")
@@ -120,6 +125,7 @@ class LiveScreenTab:
             state="readonly", width=5, font=("Segoe UI", 10),
         )
         self.period_select.pack(side="left")
+        self.timeframe.trace_add("write", lambda *_: self._refresh_cycle_guard())
         self.meta_label = _label(toolbar, "", color=MUTED, size=9, textvariable=self.meta_text)
         self.meta_label.pack(side="right")
 
@@ -183,6 +189,15 @@ class LiveScreenTab:
             size=8, color=MUTED, wraplength=300,
         ).pack(anchor="w", pady=(10, 0))
 
+        m1_card = tk.Frame(right, bg="#202333", highlightbackground=EDGE,
+                           highlightthickness=1, padx=13, pady=9)
+        m1_card.pack(fill="x", pady=(0, 10))
+        _label(m1_card, "CICLO M1 · VERIFICAÇÃO TEMPORAL",
+               size=9, weight="bold", color=AMBER, bg="#202333").pack(anchor="w")
+        _label(m1_card, "", textvariable=self.cycle_message,
+               size=9, color="#f1d5ad", bg="#202333",
+               wraplength=298).pack(anchor="w", pady=(5, 0))
+
         analysis_card = tk.Frame(right, bg=PANEL, highlightbackground=EDGE,
                                  highlightthickness=1, padx=16, pady=13)
         analysis_card.pack(fill="x", pady=(0, 10))
@@ -220,6 +235,12 @@ class LiveScreenTab:
             "não fornece horário de entrada, vencimento nem probabilidade de acerto.",
             size=9, color="#aac0d5", bg="#142436", wraplength=1050,
         ).pack(anchor="w")
+
+    def _refresh_cycle_guard(self):
+        # Captura WGC/mss só revela pixels. Nenhuma barra/quote entra na máquina
+        # M1 com flags "confirmados" por inferência de imagem.
+        status = self.m1_cycle.block_visual(self.timeframe.get())
+        self.cycle_message.set(status.reason)
 
     def _set_detail(self, text):
         self.detail_text.configure(state="normal")
@@ -305,6 +326,7 @@ class LiveScreenTab:
             image="", text="Área selecionada.\n\nClique em Iniciar análise para acompanhar.")
         self.next_opinion.set("AGUARDAR")
         self.signal_subtitle.set("AGUARDANDO PRIMEIRA LEITURA")
+        self._refresh_cycle_guard()
         self._set_detail("Nenhuma imagem foi capturada ainda. "
                          "Mantenha a IQ Option visível ao lado do DS Trader.")
 
@@ -343,6 +365,7 @@ class LiveScreenTab:
         self.signal_context.configure(fg=SIDE_COLORS[state.side])
         self.signal_subtitle.set(state.subtitle)
         self.status.set(state.status)
+        self._refresh_cycle_guard()
         self.quality_status.set("Gráfico encoberto" if obscured else
                                 "Janela fixada; sem horário verificado"
                                 if self.window_target and result.valid_roi else
@@ -401,6 +424,7 @@ class LiveScreenTab:
         self.signal_label.configure(fg=AMBER)
         self.signal_context.configure(fg=AMBER)
         self.signal_subtitle.set("CAPTURA INTERROMPIDA")
+        self._refresh_cycle_guard()
         self.status.set("Monitoramento parado")
         self.quality_status.set("Desconectado")
         self._set_detail("A captura foi interrompida. A última imagem pode "
