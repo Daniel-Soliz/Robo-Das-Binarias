@@ -262,6 +262,9 @@ class ScreenMonitor:
         self.window_target = window_target
         self.interval_seconds = interval_seconds
         self.results = Queue(maxsize=1)
+        # A captura recebe pixels sem aguardar a análise. Mantém só o quadro
+        # mais novo para não acumular latência durante movimentos rápidos.
+        self._frames = Queue(maxsize=1)
         self._stop = threading.Event()
         self._thread = None
         self._last_signature = None
@@ -285,15 +288,22 @@ class ScreenMonitor:
         if self._thread is not None and threading.current_thread() is not self._thread:
             self._thread.join(timeout=3)
 
-    def _emit(self, data):
+    @staticmethod
+    def _put_latest(queue, data):
         try:
-            self.results.put_nowait(data)
+            queue.put_nowait(data)
         except Full:
             try:
-                self.results.get_nowait()
+                queue.get_nowait()
             except Empty:
                 pass
-            self.results.put_nowait(data)
+            try:
+                queue.put_nowait(data)
+            except Full:
+                pass  # múltiplos callbacks simultâneos: vence o mais recente
+
+    def _emit(self, data):
+        self._put_latest(self.results, data)
 
     def _run(self):
         try:
@@ -350,37 +360,61 @@ class ScreenMonitor:
                 self._process_frame(frame)
                 self._stop.wait(max(0, self.interval_seconds - (time.monotonic() - began)))
 
-    def _run_window(self):
-        """Windows Graphics Capture: pega o HWND, nao pixels de janelas por cima."""
+    def _consume_window_frames(self, target, failed):
+        """Trabalho pesado fica nesta thread, nunca no callback do WGC."""
         from PIL import Image
+        while not self._stop.is_set() and not failed.is_set():
+            try:
+                width, height, raw = self._frames.get(timeout=.15)
+            except Empty:
+                continue
+            try:
+                picture = Image.frombytes("RGB", (width, height), raw, "raw", "BGRX")
+                cut = crop_window_image(picture, target)
+                if not self._stop.is_set():
+                    self._process_frame(cut)
+            except Exception as exc:
+                failed.set()
+                self._emit(("error", f"Falha ao processar quadro: {type(exc).__name__}: {exc}"))
+                break
+
+    def _run_window(self):
+        """WGC só copia o buffer na thread de captura; análise não bloqueia WGC."""
         try:
             from windows_capture import WindowsCapture
         except ImportError as exc:
             raise WindowCaptureError("Modulo windows-capture ausente no instalador.") from exc
         target = self.window_target
         check_target_window(target)
-        capture = WindowsCapture(window_hwnd=target.hwnd, cursor_capture=False,
-                                 draw_border=None,
-                                 minimum_update_interval=int(self.interval_seconds*1000))
+        capture = WindowsCapture(
+            window_hwnd=target.hwnd, cursor_capture=False, draw_border=None,
+            minimum_update_interval=int(self.interval_seconds * 1000))
         closed = threading.Event()
         failed = threading.Event()
         last_frame = [time.monotonic()]
+        last_offer = [0.0]
+        worker = threading.Thread(
+            target=self._consume_window_frames, args=(target, failed),
+            name="ds-frame-analyzer", daemon=True)
+        worker.start()
 
         @capture.event
         def on_frame_arrived(frame, capture_control):
-            if self._stop.is_set():
+            if self._stop.is_set() or failed.is_set():
                 capture_control.stop()
                 return
+            current = time.monotonic()
+            if current - last_offer[0] < self.interval_seconds * .9:
+                return
             try:
-                check_target_window(target)
-                # Frame WGC e BGRA. A copia e feita ENQUANTO o buffer esta vivo.
-                picture = Image.frombytes("RGB", (frame.width, frame.height),
-                                          frame.frame_buffer.tobytes(), "raw", "BGRX")
-                cut = crop_window_image(picture, target)
-                last_frame[0] = time.monotonic()
-                self._process_frame(cut)
+                # A cópia é obrigatória enquanto o buffer nativo está vivo.
+                # Conversão PIL, ROI, candles e linhas ficam na outra thread.
+                raw = frame.frame_buffer.tobytes()
+                last_offer[0] = current
+                last_frame[0] = current
+                self._put_latest(self._frames, (frame.width, frame.height, raw))
             except Exception as exc:
-                self._emit(("error", f"Falha na janela fixada: {type(exc).__name__}: {exc}"))
+                self._emit(("error", f"Falha na captura WGC: {type(exc).__name__}: {exc}"))
                 failed.set()
                 capture_control.stop()
 
@@ -388,14 +422,22 @@ class ScreenMonitor:
         def on_closed():
             closed.set()
 
-        controller = capture.start_free_threaded()
         try:
-            while not self._stop.wait(.5) and not failed.is_set():
+            controller = capture.start_free_threaded()
+        except Exception:
+            failed.set()
+            worker.join(timeout=.5)
+            raise
+        try:
+            while not self._stop.wait(.4) and not failed.is_set():
                 check_target_window(target)
                 if closed.is_set() or controller.is_finished():
                     raise WindowCaptureError("A captura da janela foi encerrada. Selecione novamente.")
                 if time.monotonic() - last_frame[0] > 12:
-                    raise WindowCaptureError("A janela deixou de fornecer quadros novos; "
-                                             "restaure e confira o grafico antes de continuar.")
+                    raise WindowCaptureError(
+                        "A janela deixou de fornecer quadros novos; "
+                        "restaure e confira o grafico antes de continuar.")
         finally:
+            failed.set()
             controller.stop()
+            worker.join(timeout=.8)
