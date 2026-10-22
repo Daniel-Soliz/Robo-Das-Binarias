@@ -28,7 +28,7 @@ def detect_numpy(hsv, candle_factory):
     padded = np.pad(directions, (1, 1))
     changes = np.flatnonzero(padded[1:] != padded[:-1])
     candles = []
-    for begin, end in zip(changes[::2], changes[1::2]):
+    for begin, end in zip(changes[:-1], changes[1:]):
         direction = int(directions[begin])
         span = int(end - begin)
         if direction == 0 or span < 3 or span > max(18, int(width * .055)):
