@@ -18,6 +18,7 @@ MINUTE = timedelta(minutes=1)
 OPEN_TOLERANCE = timedelta(seconds=1)
 CLOSE_TOLERANCE = timedelta(seconds=2)
 MIN_PREPARATION_LEAD = timedelta(seconds=1)
+VERIFIED_KIND = "TIMESTAMPED_QUOTES"  # somente adaptador auditavel; nunca pixels/OHLC agregado
 
 
 @dataclass(frozen=True)
@@ -28,6 +29,7 @@ class M1Bar:
     low: float
     close: float
     closed_confirmed: bool
+    confirmed_at: datetime | None = None  # momento do fechamento comprovado pela fonte
 
 
 @dataclass(frozen=True)
@@ -39,6 +41,7 @@ class M1History:
     clock_confirmed: bool
     identity_confirmed: bool
     bars: tuple[M1Bar, ...]
+    source_kind: str = "UNVERIFIED"
 
 
 @dataclass(frozen=True)
@@ -54,6 +57,7 @@ class M1Price:
     price_confirmed: bool
     kind: str = "OPEN"  # OPEN na ativacao, CLOSE na avaliacao
     closed_confirmed: bool = False
+    source_kind: str = "UNVERIFIED"
 
 
 @dataclass(frozen=True)
@@ -121,6 +125,8 @@ class M1Cycle:
                     visible_side = "AGUARDAR"  # ate confirmar a abertura
             except ValueError:
                 visible_side = "AGUARDAR"
+        if self.phase == "CONCLUIDA":
+            visible_side = "AGUARDAR"  # resultado passado não é sinal para outra vela
         return M1Status(self.phase, visible_side, self.reason, self.target_open,
                         self.target_open + MINUTE if self.target_open else None,
                         self.results[-1] if self.phase == "CONCLUIDA" else None)
@@ -139,14 +145,16 @@ class M1Cycle:
         if self.phase in ("PENDENTE", "ATIVA"):
             if (history.asset != self.asset or history.source != self.source or
                     history.timeframe != "M1" or not history.clock_confirmed or
-                    not history.identity_confirmed):
+                    not history.identity_confirmed or
+                    history.source_kind != VERIFIED_KIND):
                 return self._wait("AGUARDAR: perda de sincronizacao da fonte, ativo ou M1.")
             try:
                 return self.advance(history.observed_at)
             except (TypeError, ValueError):
                 return self._wait("AGUARDAR: observacao temporal invalida.")
         if not (history.asset and history.source and history.timeframe == "M1"
-                and history.clock_confirmed and history.identity_confirmed):
+                and history.clock_confirmed and history.identity_confirmed and
+                history.source_kind == VERIFIED_KIND):
             return self._wait("AGUARDAR: ativo, M1, fonte ou relogio nao confirmados.")
         try:
             now = _utc(history.observed_at)
@@ -160,7 +168,12 @@ class M1Cycle:
         ):
             return self._wait("AGUARDAR: intervalo M1 desalinhado ou historico com lacunas.")
         for bar, started in zip(history.bars, times):
+            try:
+                confirmed_at = _utc(bar.confirmed_at)
+            except ValueError:
+                return self._wait("AGUARDAR: falta horario de confirmacao do fechamento.")
             if (not bar.closed_confirmed or started + MINUTE > now or
+                    confirmed_at < started + MINUTE or confirmed_at > now or
                     not all(_valid_price(x) for x in (bar.open, bar.high, bar.low, bar.close)) or
                     not (bar.low <= min(bar.open, bar.close) <=
                          max(bar.open, bar.close) <= bar.high)):
@@ -190,7 +203,7 @@ class M1Cycle:
         if not (sample.source == self.source and sample.asset == self.asset and
                 sample.timeframe == "M1" and sample.clock_confirmed and
                 sample.identity_confirmed and sample.price_confirmed and
-                sample.kind == kind and
+                sample.kind == kind and sample.source_kind == VERIFIED_KIND and
                 (kind != "CLOSE" or sample.closed_confirmed) and
                 _valid_price(sample.price)):
             return False
