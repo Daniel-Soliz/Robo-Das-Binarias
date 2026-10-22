@@ -25,6 +25,13 @@ def apply_theme(root):
     style.map("TButton", background=[
         ("disabled", "#19283b"), ("pressed", "#176482"), ("active", "#274764")],
         foreground=[("disabled", "#74889d"), ("active", "#ffffff")])
+    # Sidebar dirige a navegação; não deixar abas antigas competindo no topo.
+    style.configure("Dashboard.TNotebook", background=BG, borderwidth=0,
+                    tabmargins=(0, 0, 0, 0))
+    style.layout("Dashboard.TNotebook", [
+        ("Notebook.client", {"sticky": "nswe"})
+    ])
+    style.layout("Dashboard.TNotebook.Tab", [])
     style.configure("TNotebook", background=BG, borderwidth=0, tabmargins=(2, 2, 2, 0))
     style.configure("TNotebook.Tab", background=PANEL, foreground=MUTED,
                     padding=(15, 10), borderwidth=0)
