@@ -58,6 +58,8 @@ jobs:
           name: diagnostico-windows
           path: |
             smoke-error.txt
+            smoke-progress.txt
+            smoke-trace.txt
             build-error.txt
             smoke-result.json
   publicar:
