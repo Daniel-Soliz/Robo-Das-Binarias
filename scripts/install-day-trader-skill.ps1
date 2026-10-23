@@ -19,8 +19,11 @@ if (-not (Get-Command git -ErrorAction SilentlyContinue)) {
 }
 
 try {
-    & git clone --depth 1 $repository $temporary
+    & git clone $repository $temporary
     if ($LASTEXITCODE -ne 0) { throw 'Nao foi possivel baixar o day-trader-skill.' }
+    # O branch remoto pode mudar; instalar sempre o commit fixado abaixo.
+    & git -C $temporary checkout --detach $expectedRevision
+    if ($LASTEXITCODE -ne 0) { throw 'Nao foi possivel selecionar a revisao fixada.' }
     $revision = (& git -C $temporary rev-parse HEAD).Trim()
     if ($LASTEXITCODE -ne 0 -or $revision -ne $expectedRevision) {
         throw 'A versao remota mudou desde a revisao. Instalacao interrompida para nova verificacao.'
