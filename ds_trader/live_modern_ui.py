@@ -74,6 +74,8 @@ class LiveScreenTab:
         self._last_preview_size = None
         self._detail_cache = None
         self._stale_notified = False
+        self._last_rendered_at = 0.0
+        self._details_open = False
         self.timeframe = tk.StringVar(value="M1")
         self.m1_cycle = M1Cycle()
         self.cycle_message = tk.StringVar(
@@ -93,38 +95,38 @@ class LiveScreenTab:
         self.quality_status = tk.StringVar(value="Sem dados")
         self._picker = None
 
-        container = tk.Frame(parent, bg=BG, padx=17, pady=15)
+        container = tk.Frame(parent, bg=BG, padx=13, pady=11)
         container.pack(fill="both", expand=True)
         self.container = container
 
-        # Cabeçalho editorial com hierarquia visual de produto, não formulário.
+        # Fluxo principal: selecionar o gráfico, iniciar, acompanhar o estado.
         header = tk.Frame(container, bg=BG)
         header.pack(fill="x", pady=(0, 12))
         heading = tk.Frame(header, bg=BG)
         heading.pack(side="left", fill="x", expand=True)
-        _label(heading, "MONITOR DE GRÁFICOS", size=20, weight="bold").pack(anchor="w")
+        _label(heading, "Monitor ao vivo", size=19, weight="bold").pack(anchor="w")
         _label(
-            heading, "Janela do gráfico fixada na prévia, mesmo se outros apps ficarem na frente · somente leitura",
-            size=10, color=MUTED,
+            heading, "Selecione a região das velas e acompanhe a leitura visual em uma única tela.",
+            size=9, color=MUTED,
         ).pack(anchor="w", pady=(3, 0))
         self.online_badge = _label(
             header, "●  MONITORAMENTO DESLIGADO", color=AMBER,
-            size=9, weight="bold", bg=PANEL_2, padx=12, pady=9,
+            size=9, weight="bold", bg=PANEL_2, padx=10, pady=7,
         )
         self.online_badge.pack(side="right")
 
         toolbar = tk.Frame(container, bg=PANEL, highlightbackground=EDGE,
-                           highlightthickness=1, padx=12, pady=10)
-        toolbar.pack(fill="x", pady=(0, 13))
-        self.pick_btn = _button(toolbar, "⌖  Fixar janela do gráfico", self.select)
+                           highlightthickness=1, padx=10, pady=7)
+        toolbar.pack(fill="x", pady=(0, 10))
+        self.pick_btn = _button(toolbar, "1 · Selecionar gráfico", self.select)
         self.pick_btn.pack(side="left", padx=(0, 9))
-        self.start_btn = _button(toolbar, "▶  Iniciar análise", self.start, primary=True)
+        self.start_btn = _button(toolbar, "2 · Iniciar análise", self.start, primary=True)
         self.start_btn.configure(state="disabled")
         self.start_btn.pack(side="left", padx=(0, 9))
-        self.stop_btn = _button(toolbar, "■  Parar", self.stop, stop=True)
+        self.stop_btn = _button(toolbar, "Parar", self.stop, stop=True)
         self.stop_btn.configure(state="disabled")
         self.stop_btn.pack(side="left", padx=(0, 15))
-        _label(toolbar, "Período informado:", size=9, color=MUTED).pack(side="left", padx=(4, 7))
+        _label(toolbar, "Período:", size=9, color=MUTED).pack(side="left", padx=(4, 7))
         self.period_select = ttk.Combobox(
             toolbar, values=("M1", "M5", "M15"), textvariable=self.timeframe,
             state="readonly", width=5, font=("Segoe UI", 10),
@@ -139,89 +141,88 @@ class LiveScreenTab:
         workspace.pack(fill="both", expand=True)
         workspace.grid_rowconfigure(0, weight=1)
         workspace.grid_columnconfigure(0, weight=1)
-        workspace.grid_columnconfigure(1, minsize=342)
+        workspace.grid_columnconfigure(1, minsize=305)
 
         left = tk.Frame(workspace, bg=PANEL, highlightbackground=EDGE, highlightthickness=1)
-        left.grid(row=0, column=0, sticky="nsew", padx=(0, 13))
-        left_head = tk.Frame(left, bg=PANEL, padx=13, pady=11)
+        left.grid(row=0, column=0, sticky="nsew", padx=(0, 10))
+        left_head = tk.Frame(left, bg=PANEL, padx=12, pady=8)
         left_head.pack(fill="x")
-        _label(left_head, "PRÉVIA DA TELA", weight="bold", size=10).pack(side="left")
+        _label(left_head, "GRÁFICO CAPTURADO", weight="bold", size=10).pack(side="left")
         self.preview_marker = _label(left_head, "●  SEM CAPTURA", size=9, color=MUTED)
         self.preview_marker.pack(side="right")
 
         preview_area = tk.Frame(left, bg="#070f1c")
-        preview_area.pack(fill="both", expand=True, padx=12, pady=(0, 10))
+        preview_area.pack(fill="both", expand=True, padx=10, pady=(0, 8))
         self.image_label = tk.Label(
             preview_area, bg="#070f1c", fg=MUTED, font=("Segoe UI", 11),
-            text="Sua tela aparecerá aqui.\n\nSelecione somente a área dos candles\n"
-                 "e mantenha a plataforma visível ao lado.",
+            text="O gráfico aparecerá aqui.\n\nClique em Selecionar gráfico\ne marque somente as velas.",
             justify="center", anchor="center",
         )
         self.image_label.pack(fill="both", expand=True)
         self.image_label.bind("<Configure>", self._resize_preview)
 
-        left_bottom = tk.Frame(left, bg=PANEL, padx=13, pady=4)
+        left_bottom = tk.Frame(left, bg=PANEL, padx=12, pady=4)
         left_bottom.pack(fill="x")
         _label(left_bottom, "", size=9, color=MUTED,
                textvariable=self.last_update).pack(anchor="w", pady=(0, 5))
-        _label(
-            left_bottom,
-            "Janela fixada: pode ficar atrás do DS Trader; não a minimize nem feche.",
-            size=9, color=CYAN,
-        ).pack(anchor="w", pady=(0, 7))
+        _label(left_bottom, "Não minimize a janela de origem.",
+               size=9, color=MUTED).pack(anchor="w", pady=(0, 4))
 
-        right = tk.Frame(workspace, bg=BG, width=342)
+        right = tk.Frame(workspace, bg=BG, width=305)
         right.grid(row=0, column=1, sticky="nsew")
         right.grid_propagate(False)
         right.grid_columnconfigure(0, weight=1)
 
         signal_card = tk.Frame(right, bg=PANEL, highlightbackground=EDGE,
-                               highlightthickness=1, padx=18, pady=14)
+                               highlightthickness=1, padx=15, pady=12)
         signal_card.pack(fill="x", pady=(0, 10))
-        _label(signal_card, "HIPÓTESE · PRÓXIMA VELA", color=MUTED,
+        _label(signal_card, "ESTADO DA ANÁLISE", color=MUTED,
                size=9, weight="bold").pack(anchor="w")
         self.signal_label = _label(signal_card, "", textvariable=self.next_opinion,
-                                   size=32, color=AMBER, weight="bold")
+                                   size=29, color=AMBER, weight="bold")
         self.signal_label.pack(anchor="w", pady=(5, 2))
         self.signal_context = _label(
             signal_card, "", textvariable=self.signal_subtitle,
-            color=AMBER, size=9, weight="bold", wraplength=298,
+            color=AMBER, size=9, weight="bold", wraplength=270,
         )
         self.signal_context.pack(anchor="w")
         _label(
             signal_card,
-            "CALL = alta  ·  PUT = baixa  ·  AGUARDAR = sem hipótese",
-            size=8, color=MUTED, wraplength=300,
-        ).pack(anchor="w", pady=(10, 0))
-
-        m1_card = tk.Frame(right, bg="#202333", highlightbackground=EDGE,
-                           highlightthickness=1, padx=13, pady=9)
-        m1_card.pack(fill="x", pady=(0, 10))
-        _label(m1_card, "CICLO M1 · VERIFICAÇÃO TEMPORAL",
-               size=9, weight="bold", color=AMBER, bg="#202333").pack(anchor="w")
-        _label(m1_card, "", textvariable=self.cycle_message,
-               size=9, color="#f1d5ad", bg="#202333",
-               wraplength=298).pack(anchor="w", pady=(5, 0))
+            "Leitura educacional · nenhuma ordem é enviada",
+            size=8, color=MUTED, wraplength=270,
+        ).pack(anchor="w", pady=(8, 0))
 
         analysis_card = tk.Frame(right, bg=PANEL, highlightbackground=EDGE,
-                                 highlightthickness=1, padx=16, pady=13)
+                                 highlightthickness=1, padx=13, pady=11)
         analysis_card.pack(fill="x", pady=(0, 10))
-        _label(analysis_card, "LEITURA TÉCNICA", size=10, weight="bold").pack(anchor="w", pady=(0, 9))
+        _label(analysis_card, "RESUMO DO GRÁFICO", size=10, weight="bold").pack(anchor="w", pady=(0, 6))
         for title, var in (
-            ("ESTADO DA CAPTURA", self.quality_status),
-            ("PADRÕES DE CANDLE", self.pattern_text),
-            ("ESTRUTURAS · LTA/LTB", self.structure_text),
+            ("LEITURA", self.quality_status),
+            ("PADRÕES", self.pattern_text),
+            ("TENDÊNCIA / NÍVEIS", self.structure_text),
         ):
-            _label(analysis_card, title, size=8, color=MUTED, weight="bold").pack(anchor="w", pady=(4, 2))
+            _label(analysis_card, title, size=8, color=MUTED, weight="bold").pack(anchor="w", pady=(3, 1))
             _label(analysis_card, "", textvariable=var,
-                   wraplength=300, size=9).pack(anchor="w", pady=(0, 4))
+                   wraplength=275, size=9).pack(anchor="w", pady=(0, 3))
 
-        detail_card = tk.Frame(right, bg=PANEL, highlightbackground=EDGE,
-                               highlightthickness=1, padx=16, pady=12)
+        self.details_toggle = _button(right, "Detalhes técnicos  ▾", self.toggle_details)
+        self.details_toggle.pack(fill="x", pady=(0, 8))
+        self.advanced_content = tk.Frame(right, bg=BG)
+        m1_card = tk.Frame(self.advanced_content, bg="#202333", highlightbackground=EDGE,
+                           highlightthickness=1, padx=11, pady=8)
+        m1_card.pack(fill="x", pady=(0, 8))
+        _label(m1_card, "VALIDAÇÃO M1", size=9, weight="bold",
+               color=AMBER, bg="#202333").pack(anchor="w")
+        _label(m1_card, "", textvariable=self.cycle_message,
+               size=9, color="#f1d5ad", bg="#202333",
+               wraplength=275).pack(anchor="w", pady=(4, 0))
+
+        detail_card = tk.Frame(self.advanced_content, bg=PANEL, highlightbackground=EDGE,
+                               highlightthickness=1, padx=12, pady=10)
         detail_card.pack(fill="both", expand=True)
-        _label(detail_card, "POR QUE ESTA LEITURA?", size=10, weight="bold").pack(anchor="w", pady=(0, 7))
+        _label(detail_card, "EXPLICAÇÃO COMPLETA", size=9, weight="bold").pack(anchor="w", pady=(0, 5))
         self.detail_text = tk.Text(
-            detail_card, height=5, wrap="word", bg=PANEL, fg="#c0d3e6",
+            detail_card, height=6, wrap="word", bg=PANEL, fg="#c0d3e6",
             selectbackground="#234d71", insertbackground=TEXT,
             relief="flat", bd=0, highlightthickness=0, padx=0, pady=0,
             font=("Segoe UI", 9),
@@ -230,16 +231,23 @@ class LiveScreenTab:
         self._set_detail("Aguardando captura. O app não envia ordens e não "
                          "confirma o fechamento da vela pela imagem.")
 
-        notice = tk.Frame(container, bg="#142436", highlightbackground=EDGE,
-                          highlightthickness=1, padx=12, pady=8)
-        notice.pack(fill="x", pady=(12, 0))
+        notice = tk.Frame(container, bg="#142436", padx=10, pady=5)
+        notice.pack(fill="x", pady=(8, 0))
         _label(
             notice,
-            "CAPTURA DE JANELA  ·  A imagem pode ficar fixa se o navegador parar de renderizar. "
-            "CALL/PUT não é sinal validado, "
-            "não fornece horário de entrada, vencimento nem probabilidade de acerto.",
-            size=9, color="#aac0d5", bg="#142436", wraplength=1050,
+            "Somente pixels. A captura não confirma fechamento, horário ou vencimento na IQ Option.",
+            size=9, color="#aac0d5", bg="#142436", wraplength=980,
         ).pack(anchor="w")
+
+    def toggle_details(self):
+        self._details_open = not self._details_open
+        if self._details_open:
+            self.advanced_content.pack(fill="both", expand=True)
+            self.details_toggle.configure(text="Ocultar detalhes  ▴")
+            self._render_detail()
+        else:
+            self.advanced_content.pack_forget()
+            self.details_toggle.configure(text="Detalhes técnicos  ▾")
 
     def _refresh_cycle_guard(self):
         # Captura WGC/mss só revela pixels. Nenhuma barra/quote entra na máquina
@@ -251,9 +259,14 @@ class LiveScreenTab:
         if text == self._detail_cache:
             return
         self._detail_cache = text
+        # Não repintar um campo de texto oculto a cada quadro do monitor.
+        if self._details_open:
+            self._render_detail()
+
+    def _render_detail(self):
         self.detail_text.configure(state="normal")
         self.detail_text.delete("1.0", "end")
-        self.detail_text.insert("1.0", text)
+        self.detail_text.insert("1.0", self._detail_cache or "")
         self.detail_text.configure(state="disabled")
 
     def _resize_preview(self, _event=None):
@@ -272,6 +285,7 @@ class LiveScreenTab:
         frame.thumbnail(target_size, Image.Resampling.BILINEAR)
         self.preview_image = ImageTk.PhotoImage(frame)
         self._last_preview_size = target_size
+        self._last_rendered_at = time.monotonic()
         self.image_label.configure(image=self.preview_image, text="")
 
     def _overlaps_selected_region(self):
@@ -336,6 +350,7 @@ class LiveScreenTab:
         self.last_frame = None
         self.preview_image = None
         self._last_preview_size = None
+        self._last_rendered_at = 0.0
         self.image_label.configure(
             image="", text="Área selecionada.\n\nClique em Iniciar análise para acompanhar.")
         self.next_opinion.set("AGUARDAR")
@@ -421,7 +436,10 @@ class LiveScreenTab:
                 self._last_preview_size = None
                 self._last_preview_at = time.monotonic()
                 self._stale_notified = False
-                self._resize_preview()
+                # O estado textual responde a todo resultado; a miniatura
+                # só precisa ser atualizada ~1 vez/s para poupar o Tkinter.
+                if time.monotonic() - self._last_rendered_at >= .9:
+                    self._resize_preview()
                 self._present(result)
                 self.preview_marker.configure(text="●  RECEBENDO IMAGENS", fg=CYAN)
         except Empty:
@@ -432,7 +450,7 @@ class LiveScreenTab:
             self.preview_marker.configure(text="●  LEITURA ATRASADA", fg=AMBER)
             self.next_opinion.set("AGUARDAR")
             self.signal_subtitle.set("Sem quadro recente · monitoramento atrasado")
-        self.after_id = self.root.after(120, self.poll)
+        self.after_id = self.root.after(180, self.poll)
 
     def stop(self):
         self.active = False
