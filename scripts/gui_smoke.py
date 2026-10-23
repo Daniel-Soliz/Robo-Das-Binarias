@@ -29,9 +29,11 @@ def run():
             _checkpoint('antes root.update()')
             root.update()
             _checkpoint('apos root.update()')
-            # A nova shell deve substituir a barra de abas antiga por navegacao real.
-            assert app.shell.current == 'forex', 'Pagina inicial do dashboard nao e Forex'
-            assert len(app.shell.nav_buttons) == 8, 'Navegacao lateral incompleta'
+            # Três atividades centrais visíveis, auxiliares no menu Ferramentas.
+            assert app.shell.current == 'live', 'Monitor deve abrir primeiro'
+            assert len(app.shell.nav_buttons) == 3, 'Navegacao compacta incompleta'
+            assert app.shell.more_menu.index('end') == 4, 'Menu Ferramentas incompleto'
+            assert len(app.shell.nav_frames) == 8, 'Paginas auxiliares perdidas'
             assert app.forex_view.view is None, 'Nao inventar candles antes da conexao'
             assert app.forex_view.next_candle.get().startswith('PROXIMA VELA: AGUARDAR')
             assert not app.forex_view.running, 'Nao conectar a API automaticamente'
@@ -52,6 +54,11 @@ def run():
             assert app.screen_view is not None, 'Aba de monitoramento visual ausente'
             assert app.screen_view.container.cget('bg') == '#08111f', 'Tema escuro ausente'
             assert app.screen_view.next_opinion.get() == 'AGUARDAR', 'Sinal inicial inseguro'
+            assert not app.screen_view._details_open, 'Detalhes tecnicos devem iniciar ocultos'
+            app.screen_view.toggle_details()
+            assert app.screen_view._details_open, 'Expansao dos detalhes inoperante'
+            app.screen_view.toggle_details()
+            assert not app.screen_view._details_open, 'Recolher detalhes inoperante'
             assert app.screen_view.m1_cycle.results == [], 'Captura nao pode criar entradas M1'
             assert 'captura visual' in app.screen_view.cycle_message.get(), 'Motivo do bloqueio M1 ausente'
             app.screen_view.timeframe.set('M5')

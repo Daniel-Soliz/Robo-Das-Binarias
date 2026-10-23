@@ -2,6 +2,41 @@
 
 Aplicativo desktop em português para estudar **rompimento e reteste**. Importa CSV, mostra candles e regiões, reproduz cronologicamente, explica eventos, simula e exporta resultados. Também inclui um **modo de leitura visual contínua da tela**, opt-in, sem upload de fotos. **Não envia ordens nem conecta à corretora.**
 
+## Interface compacta (v1.8)
+
+O aplicativo abre diretamente em **Monitor**. A navegação principal tem apenas
+**Monitor**, **Mercado** e **Simulador**; histórico, relatórios, configurações,
+ajuda e visão geral continuam no menu **Ferramentas**. Importação de CSV,
+exemplo sintético, exportação e backup ficam em **Arquivos**.
+
+No monitor, o procedimento é **1 · Selecionar gráfico → 2 · Iniciar análise**.
+O gráfico, o estado **AGUARDAR** e os padrões/estruturas aparecem juntos.
+O detalhamento do ciclo M1 e a explicação extensa ficam em **Detalhes técnicos**,
+fechados inicialmente. A prévia é atualizada em ritmo reduzido para evitar
+repinturas desnecessárias no Tkinter; os estados textuais continuam consumindo
+todos os resultados recebidos da análise em segundo plano. A captura pode
+ficar atrasada ou ser incapaz de reconhecer candles: nenhum valor de acerto,
+preço, horário de entrada ou vencimento é inventado.
+
+### Habilidades externas do vídeo `day-trader-skill` (opcional)
+
+O repositório [Jakeschincariol/day-trader-skill](https://github.com/Jakeschincariol/day-trader-skill)
+contém **11 habilidades para Claude Code**, voltadas principalmente a ações
+dos EUA, dados públicos e simulações. Não é um leitor da IQ Option e não
+transforma pixels em cotações verificadas. Para instalar **as 11 habilidades
+no Claude Code deste projeto**, execute na raiz do repositório, com Git e
+Claude Code já instalados:
+
+```powershell
+powershell -NoProfile -File .\scripts\install-day-trader-skill.ps1
+```
+
+O instalador baixa apenas a revisão fixada (`3d0f4ef`), confere a estrutura
+e copia para `.claude/skills/` sem substituir pastas existentes. Não executa
+as habilidades, não envia ordens e **não faz parte do instalador Windows do
+DS Trader**. Os módulos de corretora e carteira da habilidade são para
+outro mercado; devem permanecer separados do motor visual da IQ Option.
+
 O modo de tela detecta geometricamente algumas velas verde/vermelho, exibe a região selecionada e descreve somente movimento **visual relativo**. Não consegue obter preços, horários de negociação ou vencimentos oficiais dos pixels; por isso a tela mantém **AGUARDAR** e exibe estruturas técnicas estimadas, sem entrada validada. Não alimenta o simulador como se fossem cotações reais.
 
 ## Monitor visual otimizado (v1.7)
