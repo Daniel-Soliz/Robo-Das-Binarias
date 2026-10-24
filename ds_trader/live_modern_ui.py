@@ -110,16 +110,17 @@ class LiveScreenTab:
         self._auto_guard = IqOptionDiscovery()
         self._auto_id = None
 
-        container = tk.Frame(parent, bg=BG, padx=19, pady=15)
+        self.latest_assessment = None
+        container = tk.Frame(parent, bg=BG, padx=11, pady=9)
         container.pack(fill="both", expand=True)
         self.container = container
 
         # Fluxo principal: selecionar o gráfico, iniciar, acompanhar o estado.
         header = tk.Frame(container, bg=BG)
-        header.pack(fill="x", pady=(0, 14))
+        header.pack(fill="x", pady=(0, 7))
         heading = tk.Frame(header, bg=BG)
         heading.pack(side="left", fill="x", expand=True)
-        _label(heading, "Análise em tempo real", size=23, weight="bold").pack(anchor="w")
+        _label(heading, "GRÁFICO AO VIVO", size=17, weight="bold").pack(anchor="w")
         _label(
             heading, "Gráfico, estruturas e cenário da próxima vela — tudo em um lugar.",
             size=10, color=MUTED,
@@ -132,7 +133,7 @@ class LiveScreenTab:
 
         toolbar = tk.Frame(container, bg=PANEL, highlightbackground=EDGE,
                            highlightthickness=1, padx=13, pady=10)
-        toolbar.pack(fill="x", pady=(0, 13))
+        toolbar.pack(fill="x", pady=(0, 8))
         self.pick_btn = _button(toolbar, "1  Selecionar janela", self.select)
         self.pick_btn.pack(side="left", padx=(0, 8))
         self.start_btn = _button(toolbar, "2  Iniciar monitor", self.start, primary=True)
@@ -163,13 +164,13 @@ class LiveScreenTab:
         workspace.pack(fill="both", expand=True)
         workspace.grid_rowconfigure(0, weight=1)
         workspace.grid_columnconfigure(0, weight=1)
-        workspace.grid_columnconfigure(1, minsize=350)
+        workspace.grid_columnconfigure(1, minsize=365)
 
         left = tk.Frame(workspace, bg=PANEL, highlightbackground=EDGE, highlightthickness=1)
-        left.grid(row=0, column=0, sticky="nsew", padx=(0, 14))
+        left.grid(row=0, column=0, sticky="nsew", padx=(0, 9))
         left_head = tk.Frame(left, bg=PANEL, padx=16, pady=12)
         left_head.pack(fill="x")
-        _label(left_head, "VISUALIZAÇÃO DA TELA", weight="bold", size=10).pack(side="left")
+        _label(left_head, "GRÁFICO AO VIVO · Captura IQ Option", weight="bold", size=10).pack(side="left")
         self.preview_marker = _label(left_head, "●  SEM CAPTURA", size=9, color=MUTED)
         self.preview_marker.pack(side="right")
 
@@ -190,7 +191,7 @@ class LiveScreenTab:
         _label(left_bottom, "", textvariable=self.speed_status,
                size=9, color=CYAN).pack(anchor="w", pady=(0, 3))
 
-        right_holder = tk.Frame(workspace, bg=BG, width=350)
+        right_holder = tk.Frame(workspace, bg=BG, width=365)
         right_holder.grid(row=0, column=1, sticky="nsew")
         right_holder.grid_propagate(False)
         right_canvas = tk.Canvas(right_holder, bg=BG, highlightthickness=0, bd=0)
@@ -210,7 +211,7 @@ class LiveScreenTab:
         signal_card = tk.Frame(right, bg=PANEL, highlightbackground=EDGE,
                                highlightthickness=1, padx=18, pady=16)
         signal_card.pack(fill="x", pady=(0, 12))
-        _label(signal_card, "PRÓXIMA VELA  /  CENÁRIO VISUAL", color=MUTED,
+        _label(signal_card, "ANÁLISE DE CANDLES · PRÓXIMA VELA", color=CYAN,
                size=9, weight="bold").pack(anchor="w", pady=(0, 4))
         self.visual_bias_label = _label(
             signal_card, "", textvariable=self.visual_bias, size=20,
@@ -241,7 +242,7 @@ class LiveScreenTab:
         analysis_card = tk.Frame(right, bg=PANEL, highlightbackground=EDGE,
                                  highlightthickness=1, padx=16, pady=13)
         analysis_card.pack(fill="x", pady=(0, 12))
-        _label(analysis_card, "LEITURA TÉCNICA", size=10, weight="bold").pack(anchor="w", pady=(0, 7))
+        _label(analysis_card, "PADRÕES E CONFLUÊNCIAS", size=10, weight="bold").pack(anchor="w", pady=(0, 7))
         for title, var in (
             ("LEITURA", self.quality_status),
             ("PADRÕES", self.pattern_text),
@@ -251,7 +252,7 @@ class LiveScreenTab:
             _label(analysis_card, "", textvariable=var,
                    wraplength=310, size=9).pack(anchor="w", pady=(0, 4))
 
-        self.details_toggle = _button(right, "Ver explicação detalhada  ▾", self.toggle_details)
+        self.details_toggle = _button(right, "Raciocínio da análise  ▾", self.toggle_details)
         self.details_toggle.pack(fill="x", pady=(0, 8))
         self.advanced_content = tk.Frame(right, bg=BG)
         m1_card = tk.Frame(self.advanced_content, bg="#202333", highlightbackground=EDGE,
@@ -285,38 +286,13 @@ class LiveScreenTab:
         _label(focus, "", textvariable=self.active_context, size=9,
                color=TEXT, wraplength=1040).pack(fill="x")
 
-        # Radar compacto sob o gráfico: dados recebidos da aba Radar;
-        # nenhum preço ou resultado é criado para preencher a tabela.
-        radar_bar = tk.Frame(container, bg=PANEL, padx=12, pady=8,
-                             highlightbackground=EDGE, highlightthickness=1)
-        radar_bar.pack(fill="x", pady=(10, 0))
-        title_bar = tk.Frame(radar_bar, bg=PANEL)
-        title_bar.pack(fill="x", pady=(0, 6))
-        _label(title_bar, "RADAR FOREX + CRIPTO", size=9, weight="bold").pack(side="left")
-        _label(title_bar, "Dados externos · configure na aba Radar", size=8,
-               color=MUTED).pack(side="right")
-        self.radar_preview = ttk.Treeview(
-            radar_bar, columns=("market", "status", "trend", "closed"),
-            show="tree headings", height=6,
-        )
+        # Preserve the old Radar callback and Treeview contract without
+        # wasting vertical space on a duplicated table. Radar has its own tab.
+        self.radar_preview = ttk.Treeview(container,
+            columns=("market", "status", "trend", "closed"), show="tree headings")
         self.radar_preview.heading("#0", text="ATIVO")
-        self.radar_preview.column("#0", width=150, minwidth=100)
-        for name, title, width in (("market", "MERCADO", 110),
-                                    ("status", "ESTADO", 150),
-                                    ("trend", "TENDÊNCIA", 115),
-                                    ("closed", "ÚLTIMO FECHAMENTO", 175)):
-            self.radar_preview.heading(name, text=title)
-            self.radar_preview.column(name, width=width, minwidth=90)
-        self.radar_preview.pack(fill="x")
-
-        notice = tk.Frame(container, bg=PANEL, padx=13, pady=7)
-        notice.pack(fill="x", pady=(8, 0))
-        _label(
-            notice,
-            "Detecção automática usa um recorte estimado: se não identificar as velas, "
-            "selecione a região manualmente. Pixels não confirmam horário/vencimento.",
-            size=9, color=MUTED, bg=PANEL, wraplength=1100,
-        ).pack(anchor="w")
+        for column in ("market", "status", "trend", "closed"):
+            self.radar_preview.heading(column, text=column.upper())
         if sys.platform == "win32":
             self._schedule_auto()
 
@@ -549,6 +525,7 @@ class LiveScreenTab:
         self._market_key_supplier = supplier
 
     def _present(self, result):
+        self.latest_assessment = result  # Tk thread, usado apenas pela tela Padrões
         # Em captura WGC outras janelas na frente nao encobrem a origem.
         obscured = self.window_target is None and self._overlaps_selected_region()
         state = presentation_for(result, obscured=obscured)
@@ -601,6 +578,7 @@ class LiveScreenTab:
         )
 
     def _notify_stale(self):
+        self.latest_assessment = None
         self._stale_notified = True
         self.preview_marker.configure(text="●  LEITURA ATRASADA", fg=AMBER)
         self.next_opinion.set("AGUARDAR")
@@ -661,6 +639,7 @@ class LiveScreenTab:
         self.after_id = self.root.after(120, self.poll)
 
     def stop(self, *, user_requested=True):
+        self.latest_assessment = None
         if user_requested:
             self._auto_paused = True
             self._auto_enabled.set(False)

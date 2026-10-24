@@ -132,12 +132,12 @@ class RadarTab:
         self._auto_start_id = None
         self._last_display_rows = ()
 
-        base = tk.Frame(parent, bg=BG, padx=20, pady=18)
+        base = tk.Frame(parent, bg=BG, padx=14, pady=11)
         base.pack(fill="both", expand=True)
         head = tk.Frame(base, bg=BG)
-        head.pack(fill="x", pady=(0, 16))
-        tk.Label(head, text="Radar Forex + Cripto", bg=BG, fg=TEXT,
-                 font=("Segoe UI", 22, "bold")).pack(side="left")
+        head.pack(fill="x", pady=(0, 10))
+        tk.Label(head, text="RADAR FOREX + CRIPTO", bg=BG, fg=TEXT,
+                 font=("Segoe UI", 18, "bold")).pack(side="left")
         tk.Label(head, textvariable=self.status, bg=PANEL_2, fg="#e9bd78",
                  padx=12, pady=7, font=("Segoe UI", 9, "bold")).pack(side="right")
         tk.Label(base, text="Binance /USDT via WebSocket e Kraken /USD (sem cadastro). "
@@ -152,7 +152,7 @@ class RadarTab:
                                    activeforeground=TEXT, relief="flat", bd=0,
                                    padx=15, pady=9, font=("Segoe UI", 10, "bold"),
                                    cursor="hand2")
-        self.board_btn.pack(anchor="w", pady=(0, 13))
+        self.board_btn.pack(anchor="w", pady=(0, 9))
 
         tools = tk.Frame(base, bg=PANEL, padx=14, pady=12,
                          highlightbackground="#2b3948", highlightthickness=1)

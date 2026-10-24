@@ -1,12 +1,12 @@
 """Tema desktop escuro em ttk (sem dependência externa ou alterar a lógica)."""
 from tkinter import ttk
 
-BG = "#0b1017"
-PANEL = "#141d28"
-PANEL_2 = "#1c2937"
+BG = "#061323"
+PANEL = "#0b2033"
+PANEL_2 = "#14334a"
 TEXT = "#f0f5fa"
-MUTED = "#9baabb"
-ACCENT = "#62c9dd"
+MUTED = "#9bb8cd"
+ACCENT = "#37d5ec"
 
 
 def apply_theme(root):
@@ -51,7 +51,7 @@ def apply_theme(root):
               selectforeground=[("readonly", TEXT)])
     style.configure("Horizontal.TProgressbar", background=ACCENT, troughcolor=PANEL_2)
     style.configure("Treeview", background=PANEL, fieldbackground=PANEL,
-                    foreground=TEXT, rowheight=30, borderwidth=0)
+                    foreground=TEXT, rowheight=35, borderwidth=0)
     style.map("Treeview", background=[("selected", "#315e70")])
     style.configure("Treeview.Heading", background=PANEL_2, foreground=TEXT,
                     font=("Segoe UI Semibold", 10), relief="flat")

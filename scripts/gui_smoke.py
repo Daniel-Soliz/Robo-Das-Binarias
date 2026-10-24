@@ -33,11 +33,11 @@ def run():
             _checkpoint('apos root.update()')
             # Três atividades centrais visíveis, auxiliares no menu Ferramentas.
             assert app.shell.current == 'radar', 'Radar deve abrir primeiro'
-            assert len(app.shell.nav_buttons) == 3, 'Navegacao compacta incompleta'
+            assert len(app.shell.nav_buttons) == 5, 'Navegacao lateral incompleta'
             assert app.shell.nav_buttons['live'][0].master == app.shell.nav_buttons['radar'][0].master, (
                 'As tres abas principais devem estar alinhadas numa barra superior')
             assert app.shell.more_menu.index('end') == 5, 'Menu Ferramentas incompleto'
-            assert len(app.shell.nav_frames) == 9, 'Paginas auxiliares perdidas'
+            assert len(app.shell.nav_frames) == 10, 'Paginas auxiliares perdidas'
             # Public Kraken may auto-start after Tk's 900 ms timer. Either
             # scheduling or received public data is allowed, never fake quotes.
             assert app.radar_view.key.get() == '', 'Radar público não exige chave'

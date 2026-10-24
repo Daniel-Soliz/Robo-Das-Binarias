@@ -11,6 +11,7 @@ from ds_trader.simulation import Settings, Replay
 from ds_trader.storage import Store, export_report
 from ds_trader.explain import explain
 from ds_trader.live_modern_ui import LiveScreenTab
+from ds_trader.patterns_ui import PatternsTab
 from ds_trader.theme import apply_theme, BG, PANEL, TEXT, MUTED, ACCENT
 from ds_trader.forex_dashboard import ForexDashboard as ForexMarketTab
 from ds_trader.dashboard_shell import DashboardShell, label as dashboard_label
@@ -31,7 +32,7 @@ class App:
     def __init__(self,root,store=None):
         self.root=root;self.store=store or Store()
         self.data=None;self.replay=None;self.running=False;self.run_id=None;self.report_view=None;self.timer=None;self.event_view=[]
-        self.root.title('DS Trader — Análise e Simulação')
+        self.root.title('DS Trader AI — Monitor inteligente de mercado')
         style=apply_theme(root)
         self.shell=DashboardShell(root, [
             ('Importar CSV', lambda:self.guard(self.import_file), '▤'),
@@ -46,6 +47,7 @@ class App:
         self.forex_tab=ttk.Frame(self.book)
         self.radar_tab=ttk.Frame(self.book)
         self.live_tab=ttk.Frame(self.book)
+        self.patterns_tab=ttk.Frame(self.book)
         self.events_tab=ttk.Frame(self.book)
         self.report_tab=ttk.Frame(self.book)
         self.config_tab=ttk.Frame(self.book)
@@ -56,6 +58,7 @@ class App:
             ('forex',self.forex_tab,'Forex em tempo real'),
             ('radar',self.radar_tab,'Radar Forex e cripto'),
             ('live',self.live_tab,'Tela ao vivo'),
+            ('patterns',self.patterns_tab,'Padrões IA'),
             ('events',self.events_tab,'Sinais e histórico'),
             ('reports',self.report_tab,'Resultados'),
             ('config',self.config_tab,'Configurações'),
@@ -87,6 +90,8 @@ class App:
         self.canvas.bind('<Configure>',lambda e:self.draw())
         self.forex_view=ForexMarketTab(self.forex_tab,self.root)
         self.screen_view=LiveScreenTab(self.live_tab,self.root)
+        self.patterns_view=PatternsTab(self.patterns_tab,self.root,self.screen_view)
+        self.shell.bind_live(self.screen_view)
         self.radar_view=RadarTab(self.radar_tab,self.root,
                                  on_update=self.screen_view.update_radar_preview)
         self.screen_view.set_market_key_supplier(lambda:self.radar_view.key.get())
@@ -305,6 +310,7 @@ class App:
         if path:self.store.backup(path)
     def close(self):
         self.radar_view.shutdown()
+        self.patterns_view.shutdown()
         self.forex_view.shutdown()
         self.screen_view.shutdown()
         self.stop();self.store.close();self.root.destroy()
@@ -318,4 +324,8 @@ def main():
             ctypes.windll.shcore.SetProcessDpiAwareness(2)
         except (AttributeError, OSError):
             pass
-    root=tk.Tk();app=App(root);root.mainloop()
+    root=tk.Tk();app=App(root)
+    if sys.platform == 'win32':
+        try: root.state('zoomed')
+        except tk.TclError: pass
+    root.mainloop()
