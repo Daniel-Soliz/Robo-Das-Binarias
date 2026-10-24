@@ -43,6 +43,33 @@ class ScreenPanelTest(TestCase):
             self.assertIn("NAO VERIFICADOS", state.subtitle)
             self.assertIn("LTA", state.structure)
 
+    def test_trend_can_be_shown_without_issuing_trade_signal(self):
+        state = presentation_for(self.sample(temporal_verified=False, trend_visual="ALTA"))
+        self.assertEqual(state.side, "AGUARDAR")
+        self.assertIn("ALTA", state.status)
+        self.assertIn("Tendência visual: ALTA", state.structure)
+
+    def test_visual_scenario_does_not_unlock_call(self):
+        result = self.sample(temporal_verified=False, next_visual_bias="ALTA",
+                             visual_reasons=("Fundos ascendentes",))
+        state = presentation_for(result)
+        self.assertEqual(state.side, "AGUARDAR")
+        self.assertEqual(state.outlook, "ALTA FAVORECIDA")
+        self.assertIn("Fundos ascendentes", state.outlook_reason)
+
+    def test_obscured_chart_hides_prior_visual_bias(self):
+        result = self.sample(next_visual_bias="BAIXA")
+        state = presentation_for(result, obscured=True)
+        self.assertEqual(state.outlook, "SEM VANTAGEM CLARA")
+
+    def test_unknown_window_asset_hides_directional_visual_forecast(self):
+        result = self.sample(identity_required=True, identity_confirmed=False,
+                             next_visual_bias="ALTA", temporal_verified=False)
+        state = presentation_for(result)
+        self.assertEqual(state.side, "AGUARDAR")
+        self.assertEqual(state.outlook, "SEM VANTAGEM CLARA")
+        self.assertIn("ATIVO", state.subtitle)
+
     def test_obscured_source_forces_wait_even_with_call(self):
         state = presentation_for(self.sample(), obscured=True)
         self.assertEqual(state.side, "AGUARDAR")

@@ -2,6 +2,8 @@
 import json
 import tempfile
 from pathlib import Path
+import sys
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from ds_trader.ui import App
 from ds_trader.storage import Store, export_report
 import tkinter as tk
@@ -30,10 +32,28 @@ def run():
             root.update()
             _checkpoint('apos root.update()')
             # Três atividades centrais visíveis, auxiliares no menu Ferramentas.
-            assert app.shell.current == 'live', 'Monitor deve abrir primeiro'
+            assert app.shell.current == 'radar', 'Radar deve abrir primeiro'
             assert len(app.shell.nav_buttons) == 3, 'Navegacao compacta incompleta'
-            assert app.shell.more_menu.index('end') == 4, 'Menu Ferramentas incompleto'
-            assert len(app.shell.nav_frames) == 8, 'Paginas auxiliares perdidas'
+            assert app.shell.nav_buttons['live'][0].master == app.shell.nav_buttons['radar'][0].master, (
+                'As tres abas principais devem estar alinhadas numa barra superior')
+            assert app.shell.more_menu.index('end') == 5, 'Menu Ferramentas incompleto'
+            assert len(app.shell.nav_frames) == 9, 'Paginas auxiliares perdidas'
+            # Public Kraken may auto-start after Tk's 900 ms timer. Either
+            # scheduling or received public data is allowed, never fake quotes.
+            assert app.radar_view.key.get() == '', 'Radar público não exige chave'
+            assert app.radar_view.interval.get() == '5min', 'Radar deve iniciar em M5'
+            from ds_trader.market_board import market_board_path
+            assert market_board_path().is_file(), 'Painel de mercados nao foi empacotado'
+            assert app.radar_view.board_btn.winfo_exists(), 'Atalho de mercados globais nao existe'
+            assert app.screen_view.timeframe.get() == 'M5', 'M5 deve ser periodo inicial'
+            assert app.screen_view.active_context.get().startswith('M5'), 'Contexto M5 nao aparece no Monitor'
+            assert not app.screen_view.active_tracking.running, 'Historico nao inicia sem grafico reconhecido'
+            from ds_trader.market_radar_ui import DEFAULT_WATCHLIST
+            assert len(app.radar_view.model.rows()) == len(DEFAULT_WATCHLIST), 'Favoritos iniciais ausentes'
+            assert all(row.category in ('FOREX', 'CRYPTO') for row in app.radar_view.model.rows()), (
+                'Lista inicial do radar foi corrompida')
+            assert len(app.screen_view.radar_preview.get_children()) == len(DEFAULT_WATCHLIST), (
+                'Prévia compacta do radar deve acompanhar os favoritos')
             assert app.forex_view.view is None, 'Nao inventar candles antes da conexao'
             assert app.forex_view.next_candle.get().startswith('PROXIMA VELA: AGUARDAR')
             assert not app.forex_view.running, 'Nao conectar a API automaticamente'
@@ -49,21 +69,31 @@ def run():
             assert app.book.select() == str(app.overview_tab), 'Visao geral inacessivel'
             app.shell.go('live')
             assert app.book.select() == str(app.live_tab), 'Tela ao vivo inacessivel'
+            app.shell.go('radar')
+            assert app.book.select() == str(app.radar_tab), 'Radar inacessivel'
             app.shell.go('forex')
             assert app.book.select() == str(app.forex_tab), 'Forex inacessivel'
             assert app.screen_view is not None, 'Aba de monitoramento visual ausente'
-            assert app.screen_view.container.cget('bg') == '#08111f', 'Tema escuro ausente'
+            assert app.screen_view.container.cget('bg') == '#0b1017', 'Tema escuro ausente'
             assert app.screen_view.next_opinion.get() == 'AGUARDAR', 'Sinal inicial inseguro'
+            assert app.screen_view.visual_bias.get() == 'SEM VANTAGEM CLARA', (
+                'Cenario visual inicial precisa ser conservador')
+            assert app.screen_view.right_canvas.winfo_exists(), 'Painel de analise responsivo ausente'
+            assert 'MOTOR PRONTO' in app.screen_view.speed_status.get(), (
+                'Status de desempenho inicial ausente')
             assert not app.screen_view._details_open, 'Detalhes tecnicos devem iniciar ocultos'
             app.screen_view.toggle_details()
             assert app.screen_view._details_open, 'Expansao dos detalhes inoperante'
             app.screen_view.toggle_details()
             assert not app.screen_view._details_open, 'Recolher detalhes inoperante'
             assert app.screen_view.m1_cycle.results == [], 'Captura nao pode criar entradas M1'
-            assert 'captura visual' in app.screen_view.cycle_message.get(), 'Motivo do bloqueio M1 ausente'
+            assert 'não é M1' in app.screen_view.cycle_message.get(), 'M5 deve bloquear ciclo M1'
             app.screen_view.timeframe.set('M5')
             assert 'não é M1' in app.screen_view.cycle_message.get(), 'Troca de periodo nao bloqueada'
             app.screen_view.timeframe.set('M1')
+            assert 'AGUARDAR' in app.screen_view.active_context.get(), (
+                'Selecao diferente de M5 nao invalidou o acompanhamento M5'
+            )
             assert app.screen_view.m1_cycle.status().side == 'AGUARDAR', 'Ciclo visual inseguro'
             assert app.screen_view.start_btn.cget('state') == 'disabled', 'Iniciar sem selecionar grafico'
             from ds_trader.live_screen import Region
@@ -77,7 +107,7 @@ def run():
             assert app.screen_view.next_opinion.get() == 'AGUARDAR', 'Parar nao limpou sinal'
             assert app.forex_view is not None, 'Aba Forex ausente'
             assert not app.forex_view.running, 'Forex nao pode conectar automaticamente'
-            assert not app.screen_view.active, 'Captura nao pode iniciar sem consentimento'
+            assert not app.screen_view.active, 'Nao iniciar captura sem janela IQ Option reconhecida'
             # O dashboard abre no Forex. O canvas do replay só recebe tamanho
             # real quando sua página fica visível; jamais validar canvas oculto.
             _checkpoint('selecionando aba grafico e reproducao')
@@ -120,6 +150,6 @@ def run():
                 diag.close()
         reopened=Store(Path(tmp)/'state.sqlite3');assert reopened.runs();reopened.close()
         _checkpoint('smoke concluido')
-        return {'gui':'passed','candles':report['processed'],'operations':len(report['trades']),'persistence':'passed','export':'passed','forex_tab':'passed'}
+        return {'gui':'passed','candles':report['processed'],'operations':len(report['trades']),'persistence':'passed','export':'passed','forex_tab':'passed','radar_tab':'passed'}
 
 if __name__=='__main__':print(json.dumps(run()))

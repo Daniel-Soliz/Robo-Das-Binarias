@@ -1,12 +1,12 @@
 """Tema desktop escuro em ttk (sem dependência externa ou alterar a lógica)."""
 from tkinter import ttk
 
-BG = "#08111f"
-PANEL = "#101c2d"
-PANEL_2 = "#15243a"
-TEXT = "#e9f3ff"
-MUTED = "#9bb0c6"
-ACCENT = "#45c8ed"
+BG = "#0b1017"
+PANEL = "#141d28"
+PANEL_2 = "#1c2937"
+TEXT = "#f0f5fa"
+MUTED = "#9baabb"
+ACCENT = "#62c9dd"
 
 
 def apply_theme(root):
@@ -23,7 +23,7 @@ def apply_theme(root):
                     foreground=TEXT, borderwidth=0, relief="flat",
                     focuscolor=ACCENT)
     style.map("TButton", background=[
-        ("disabled", "#19283b"), ("pressed", "#176482"), ("active", "#274764")],
+        ("disabled", "#25303c"), ("pressed", "#176482"), ("active", "#304557")],
         foreground=[("disabled", "#74889d"), ("active", "#ffffff")])
     # Sidebar dirige a navegação; não deixar abas antigas competindo no topo.
     style.configure("Dashboard.TNotebook", background=BG, borderwidth=0,
@@ -52,7 +52,7 @@ def apply_theme(root):
     style.configure("Horizontal.TProgressbar", background=ACCENT, troughcolor=PANEL_2)
     style.configure("Treeview", background=PANEL, fieldbackground=PANEL,
                     foreground=TEXT, rowheight=30, borderwidth=0)
-    style.map("Treeview", background=[("selected", "#155c7b")])
+    style.map("Treeview", background=[("selected", "#315e70")])
     style.configure("Treeview.Heading", background=PANEL_2, foreground=TEXT,
                     font=("Segoe UI Semibold", 10), relief="flat")
     style.map("Treeview.Heading", background=[("active", "#274764")])

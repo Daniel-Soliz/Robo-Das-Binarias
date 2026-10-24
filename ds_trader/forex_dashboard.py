@@ -9,11 +9,11 @@ from tkinter import ttk
 from ds_trader.forex_ui import ForexMarketTab as ForexEngineTab
 from ds_trader.forex_live import PAIRS, INTERVALS
 from ds_trader.dashboard_shell import label, PANEL, TEXT, MUTED, BORDER, AMBER, GREEN
+from ds_trader.theme import BG
 
-BG = "#08111f"
-HIGHLIGHT = "#0a386e"
-RED = "#fb7987"
-CYAN = "#4ca9ff"
+HIGHLIGHT = "#284c5e"
+RED = "#fd8991"
+CYAN = "#62c9dd"
 
 
 def card(parent, *, accent=BORDER, padx=16, pady=13):
@@ -77,10 +77,10 @@ class ForexDashboard(ForexEngineTab):
         self.key_entry.pack(fill="x", ipady=6)
         self.go = tk.Button(
             filters, text="⚡  Conectar ao mercado", command=self.start,
-            bg="#0759b9", fg="white", activebackground="#086fe2",
+            bg="#187d91", fg="white", activebackground="#2395a9",
             activeforeground="white", relief="flat", bd=0,
             font=("Segoe UI", 10, "bold"), cursor="hand2",
-            highlightbackground="#187ef8", highlightthickness=1,
+            highlightbackground="#3d9bb1", highlightthickness=1,
         )
         self.go.grid(row=0, column=4, sticky="sew", padx=(9, 0), ipady=9)
         self.stop_btn = tk.Button(
@@ -121,10 +121,10 @@ class ForexDashboard(ForexEngineTab):
             font=("Segoe UI", 13), padx=9, pady=3, cursor="hand2",
         )
         self.expand_btn.pack(side="left", padx=2)
-        chart_area = tk.Frame(left, bg="#071728", highlightbackground="#19324b",
+        chart_area = tk.Frame(left, bg="#101923", highlightbackground=BORDER,
                               highlightthickness=1)
         chart_area.pack(fill="both", expand=True)
-        self.canvas = tk.Canvas(chart_area, bg="#071728", highlightthickness=0, bd=0)
+        self.canvas = tk.Canvas(chart_area, bg="#101923", highlightthickness=0, bd=0)
         self.canvas.pack(fill="both", expand=True)
         self.canvas.bind("<Configure>", lambda _evt: self.draw())
 

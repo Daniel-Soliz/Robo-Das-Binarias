@@ -16,6 +16,7 @@ __pycache__/
 .mypy_cache/
 .ruff_cache/
 .venv/
+.superpowers/
 venv/
 .idea/
 .vscode/
@@ -36,9 +37,13 @@ dist/
 build/
 dist/
 release/
+release-build/
 *.spec
 *.sqlite3
 DS-Trader-Windows-x64*
 smoke-result.json
 smoke-error.txt
+smoke-progress.txt
+smoke-trace.txt
+build-error.txt
 !examples/*.csv

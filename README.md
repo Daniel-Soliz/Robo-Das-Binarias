@@ -1,16 +1,194 @@
-# DS Trader — Análise e Simulação
+# DS Trader — Monitor visual e radar de mercado
 
-Aplicativo desktop em português para estudar **rompimento e reteste**. Importa CSV, mostra candles e regiões, reproduz cronologicamente, explica eventos, simula e exporta resultados. Também inclui um **modo de leitura visual contínua da tela**, opt-in, sem upload de fotos. **Não envia ordens nem conecta à corretora.**
+## Instalação pelo site Robo das Binárias
 
-## Interface compacta (v1.8)
+O visitante usa o botão **Baixar instalador** da página
+`https://daniel-soliz.github.io/Robo-Das-Binarias/`. A página procura
+`DS-Trader-Setup.exe` na última versão publicada em GitHub Releases e só
+habilita o botão quando o arquivo existe. O ZIP é apenas um formato de
+transporte do código entre desenvolvedores, não o download do usuário final.
+
+Esta revisão prepara o instalador Windows para levar Python, bibliotecas e
+Tesseract OCR com o modelo inglês dentro do pacote, criando atalho e
+desinstalador. O build bloqueia a entrega se o OCR estiver ausente. Ainda é
+necessário **compilar e verificar o EXE em Windows** antes de publicar a
+versão. O aplicativo abre no **Radar M5** e consulta criptomoedas públicas
+quando houver rede; Forex exige chave Twelve Data válida e a leitura da IQ
+Option depende da janela visível e da confirmação do cabeçalho. Sem fonte ou
+sincronização confirmada, o estado é `AGUARDAR`.
+
+Aplicativo desktop em português para leitura visual consentida de gráficos, radar por fonte externa e estudos históricos de **rompimento e reteste**. Importa CSV, reproduz cronologicamente, explica eventos, simula e exporta resultados. **Não envia ordens nem conecta à conta da corretora.**
+
+## Arquitetura híbrida — mercados públicos (código em validação)
+
+### Novo: seguir automaticamente o ativo visível (M5, até 24 horas)
+
+O Monitor agora inicia em **M5**. Quando uma janela IQ Option é fixada e o
+OCR local confirma o mesmo símbolo/período após três leituras, a faixa
+**ATIVO DETECTADO · HISTÓRICO M5 ATÉ 24 HORAS** passa a consultar, em uma
+thread separada, a fonte de mercado exata para aquele par. Trocar `USD/JPY`
+por `USD/BRL` invalida imediatamente o resultado antigo, inclusive se uma
+resposta HTTP atrasada chegar depois da troca. Falha de OCR, frame atrasado,
+outro período ou ativo OTC também invalida o cenário. Um par inverso
+(`USD/NZD` e `NZD/USD`) nunca é substituído silenciosamente.
+
+- **Cripto Binance `/USDT` e Kraken `/USD`:** histórico M5 público ampliado
+  para até 288 candles realmente fechados. A consulta real Binance de teste
+  retornou 288 candles M5 / 24h, sem chave.
+- **Forex (`USD/JPY`, `USD/NZD`, `USD/BRL` etc.):** o identificador funciona
+  para pares válidos, mas o histórico M5 requer uma fonte autorizada. A
+  chave Twelve Data é opcional e digitada no Radar, somente em memória. A
+  disponibilidade do par, créditos, feriados e eventuais atrasos são do
+  fornecedor. Sem chave aparece `SEM FONTE`, sem inventar candles.
+- **Análise:** exige pelo menos 12 horas contínuas, aceita no máximo 24
+  horas fechadas, verifica OHLC, ordem, duração, horário e atualização.
+  Reaproveita regras explicáveis para tendência SMA 9/21, pivôs, padrões e
+  confluências. O resultado tem sempre motivo e fonte identificada.
+- **Segurança:** `CALL` e `PUT` podem aparecer apenas como **cenário de
+  referência externa**, nunca como entrada validada na IQ Option. O estado
+  operacional continua `AGUARDAR` enquanto não houver preços e horários
+  comprovadamente sincronizados com a corretora. Após 120s sem novo candle
+  fechado a hipótese exibida expira, mesmo antes da próxima consulta HTTP.
+
+O reconhecimento da janela por título e o OCR do cabeçalho são coisas
+diferentes: o build Windows atualizado **inclui o executável Tesseract OCR e
+seus dados ingleses**; em desenvolvimento, ainda é possível usar o Tesseract
+do `PATH`. Sem o motor OCR funcional não há identidade confirmada, e o sistema
+mantém `AGUARDAR`. A integração gráfica, OCR embutido, desempenho e
+detecção sobre layouts reais da IQ Option precisam de teste em Windows.
+Não existe modelo de IA treinado, taxa de acerto medida ou integração com
+ordens da corretora nesta etapa.
+
+O aplicativo agora contém **Monitor / Radar / Histórico** na navegação principal
+e abre inicialmente no Radar M5.
+`Ferramentas` mantém o Forex anterior, simulador CSV, resultados, configurações,
+visão geral e ajuda. No Monitor, a parte inferior resume seis favoritos
+iniciais (`BTC/USDT`, `ETH/USDT`, `BTC/USD`, `ETH/USD`, `EUR/USD`, `GBP/USD`); abra **Radar** para editar
+até 25 favoritos Forex e cripto. Nenhuma linha mostra valores inventados
+enquanto não houver conexão.
+
+### Radar sem cadastro para cripto; Forex opcional com chave
+
+1. Abra o DS Trader. O radar inicializa **dois provedores públicos de cripto**,
+   **sem criar conta ou chave**: Binance Spot `BTC/USDT`, `ETH/USDT` via
+   WebSocket (com histórico REST inicial), e Kraken Spot `BTC/USD`, `ETH/USD`
+   via consultas periódicas. Cada símbolo tem sua própria fonte e moeda de
+   cotação; USDT **não é USD**. Esses preços não pertencem à IQ Option e não
+   equivalem a ativos OTC. A consulta pode demorar e sofrer interrupções.
+2. Forex intradiario (`EUR/USD`, `GBP/USD` etc.) continua **sem fonte** ate
+   configurar uma chave pessoal Twelve Data no proprio aplicativo. Confira a
+   cobertura e o limite de creditos do seu plano; nao envie a chave por chat.
+   Ela nao e salva no banco nem nos relatorios.
+3. Abra **Radar** para alterar ate 25 favoritos e o periodo M1/M5/M15,
+   sendo no máximo dez pares Binance `/USDT` num WebSocket combinado. O
+   programa só analisa candles Binance com evento `x=true` e horário de
+   fechamento válido. Demais pares continuam na consulta programada Kraken /
+   Twelve Data; sem chave o Kraken respeita 2 s entre consultas e 120 s por
+   ativo. Na falha do WebSocket a linha é marcada como erro e a conexão tenta
+   recuperar com pausas progressivas. Nunca envia ordens.
+4. A tela mostra apenas os símbolos realmente recebidos, datas UTC de
+   fechamento, situação atual/atrasada/indisponível, média e tendência
+   descritivas. Dados envelhecidos deixam de mostrar direção.
+5. Clique em **Ver B3, Forex e Cripto no TradingView**. O painel oficial abre
+   no navegador padrão, com abas Brasil/Forex/Cripto. **As cotações gratuitas
+   da B3 têm atraso aproximado de 15 minutos.** Esse widget apenas mostra
+   referências visuais: ele não fornece candles nem sinais ao Radar.
+6. Para encerrar a análise, use **Parar**. Uma chave informada e limpa do campo.
+
+Isso **não é streaming tick a tick nem monitoramento irrestrito** de todos
+os mercados. O WebSocket Binance emite snapshots de candles Spot fechados;
+o TradingView só apresenta uma seleção de símbolos, sem análise automatizada
+da B3. Dados B3 realmente ao vivo para cálculo intradiário exigem
+licenciamento/fonte autorizada. Os preços de Binance/Kraken/Twelve Data podem
+diferir da IQ Option, sobretudo OTC. O aplicativo nunca trata duas origens
+como equivalentes.
+
+### Deteccao automatica da IQ Option no Windows
+
+Com **Detectar IQ Option** ligado (padrao Windows), o monitor procura a
+cada ~1,5s uma unica janela cujo titulo comece com "IQ Option". Apos duas
+observacoes iguais, seleciona um **recorte central estimado** e tenta
+iniciar a captura sem cliques. Se voce mudar o layout ou nao enxergar as
+velas, selecione manualmente a regiao correta. Janelas pequenas, fechadas,
+minimizadas, ambiguas ou com titulos nao reconhecidos nao sao anexadas.
+**Parar** desativa a redeteccao ate reativar a caixa de selecao.
+
+Reconhecer a janela nao comprova qual par, periodo ou vencimento estao
+visiveis. Se a leitura falhar, o estado permanece `AGUARDAR`. O desempenho
+do OCR, a captura WGC e o recorte automatico dependem de validacao no
+Windows real; o recurso nao le dados privados da conta IQ Option.
+
+### Troca do ativo visível na IQ Option
+
+O monitor agora tem um guardião de identidade separado da leitura geométrica:
+uma identidade precisa permanecer igual em três observações de cabeçalho
+para ser mostrada como confirmada. Quando a observação muda ou fica ilegível,
+o estado anterior é invalidado imediatamente; durante a transição mostra
+`AGUARDAR`. Um OCR local lê uma faixa acima da região marcada
+para tentar identificar ativo, período e OTC. Sem OCR funcional, ou se a
+interface da IQ Option mudar, a identidade
+permanece **não confirmada**; a captura visual pode continuar exibindo o
+gráfico, mas não anuncia o novo ativo como reconhecido. O OCR e os recortes
+necessitam de validação manual em Windows real.
+Por segurança, **cada quadro é associado à sua própria leitura de
+cabeçalho**. Um quadro sem leitura não herda o ativo antigo. Quadros fora de
+ordem ou com mais de 2,5 segundos de idade não são apresentados como análise
+atual, incluindo o tempo de espera da fila até o Tkinter.
+
+Esta é uma **etapa de código e testes automatizados**, com verificação pontual
+das fontes públicas Binance e Kraken, mas ainda sem captura real da IQ Option,
+teste visual Windows nem compilação do instalador desta versão. A implementação
+não contém modelo de IA treinado e não estima
+probabilidades verificadas de acerto.
+
+## Interface desktop renovada (v1.9)
+
+### Painel principal renovado
+
+A interface atual prioriza uma barra superior com **Monitor / Radar /
+Histórico**, retirando a barra lateral permanente para dar mais espaço ao
+gráfico. Na tela Monitor, o cenário da próxima vela aparece em destaque,
+separado do estado de validação **AGUARDAR**. Uma faixa abaixo da imagem
+mostra o tempo real de processamento e a idade do quadro recebido, quando
+medidos na própria máquina. A atualização solicitada é de 550 ms e a
+reprodução da prévia não acumula quadros antigos; são limites desejados,
+não promessas de latência no Windows ou na corretora.
 
 O aplicativo abre diretamente em **Monitor**. A navegação principal tem apenas
-**Monitor**, **Mercado** e **Simulador**; histórico, relatórios, configurações,
-ajuda e visão geral continuam no menu **Ferramentas**. Importação de CSV,
+**Monitor**, **Radar** e **Histórico**; simulador, Forex antigo, relatórios,
+configurações, ajuda e visão geral continuam no menu **Ferramentas**. Importação de CSV,
 exemplo sintético, exportação e backup ficam em **Arquivos**.
 
 No monitor, o procedimento é **1 · Selecionar gráfico → 2 · Iniciar análise**.
 O gráfico, o estado **AGUARDAR** e os padrões/estruturas aparecem juntos.
+O gráfico também mostra linhas de **SUPORTE VISUAL** e **RESIST. VISUAL**
+quando existem pivôs reconhecíveis, além de LTA/LTB. O painel resume o viés
+visual (alta/baixa) sem exibir porcentagens de acerto inventadas. As linhas
+são estimativas em coordenadas da imagem, **não preços negociáveis**.
+Quando não há pivô suficiente, a prévia distingue **TOPO RECENTE** ou
+**FUNDO RECENTE** de uma resistência/suporte confirmados. O cartão
+**PRÓXIMA VELA · CENÁRIO VISUAL** compara tendências, LTA/LTB e impulso;
+mostra ALTA FAVORECIDA, BAIXA FAVORECIDA ou SEM VANTAGEM CLARA com motivos.
+Estar perto de um topo/fundo oposto bloqueia uma conclusão apressada.
+O estado operacional permanece **AGUARDAR** se fechamento/relógio não forem
+verificáveis por captura visual, mesmo com um cenário favorecido.
+O cenário atual é calculado por visão computacional e regras explicáveis;
+**não há um modelo de IA treinado ou probabilidade calibrada de alta/baixa**.
+Para isso seria necessário um histórico confiável da mesma fonte, rótulos
+temporais e avaliação fora da amostra, separados do motor visual.
+
+### Velocidade e verificação
+
+- O monitor captura quadros em segundo plano e mantém apenas o mais novo.
+- O painel exibe **PROCESSAMENTO** (tempo gasto pelo motor) e **IDADE DO QUADRO**
+  (tempo transcorrido desde a captura até a entrega da análise).
+- Pode-se medir um print sem rede com `python scripts/benchmark_visual.py print.jpg
+  --crop 100 90 1300 635 --runs 100`, ajustando o recorte às velas.
+- O pipeline Windows de CI realiza smoke test com interface gráfica real,
+  instalação e abertura do executável antes de publicar a release. Testes
+  locais em ambiente sem tela não substituem esse teste.
+O detector ignora linhas horizontais extensas que algumas plataformas desenham
+em vermelho/verde, reduzindo falhas de reconhecimento de candles.
 O detalhamento do ciclo M1 e a explicação extensa ficam em **Detalhes técnicos**,
 fechados inicialmente. A prévia é atualizada em ritmo reduzido para evitar
 repinturas desnecessárias no Tkinter; os estados textuais continuam consumindo
@@ -47,7 +225,7 @@ e o coloca em fila de capacidade **um**, enquanto uma thread separada
 extrai candles e estruturas. Se a análise atrasar, quadros intermediários
 são descartados em vez de acumular demora crescente.
 
-- Captura solicitada a cada **650 ms** (limite desejado, não FPS garantido).
+- Captura solicitada a cada **550 ms** (limite desejado, não FPS garantido).
 - Leitura HSV vetorizada com NumPy no Windows; fallback Python mantido.
 - Prévia reduzida, sem recalcular Text/guard temporal em todos os frames.
 - Botão **Parar** não aguarda processamento pesado na thread do Tkinter.
@@ -82,12 +260,12 @@ A guia **Tela ao vivo** ganhou um painel escuro de duas colunas: **previsualizac
 ### Fixar a janela do grafico (Windows 10/11)
 
 Na versao 1.4, clique em **Fixar janela do grafico**, arraste uma area
-**dentro da janela do navegador** e clique **Iniciar analise**. O DS Trader
+**dentro da janela do aplicativo IQ Option ou navegador** e clique **Iniciar análise**. O DS Trader
 identifica a janela escolhida e passa a captar a area relativa a ela com a
 API Windows Graphics Capture, mesmo que outra janela fique na frente. Assim
 nao aparece o efeito de recursao com o DS Trader capturando a propria tela.
 
-Mantenha a janela do navegador **aberta e nao minimizada**. A captura nao
+Mantenha a janela de origem **aberta e não minimizada**. A captura não
 garante atualizacao quando a aplicacao para de desenhar quadros, quando a
 janela e minimizada ou em casos de protecao de conteudo. Se mudar bastante
 o tamanho/escala do navegador, selecione novamente. Se a captura falhar,
@@ -157,9 +335,9 @@ Documentacao do provedor: https://twelvedata.com/docs e https://support.twelveda
 ## Monitorar seu gráfico na tela em tempo real (leitura visual)
 
 1. Abra o gráfico em seu navegador/corretora, preferencialmente com fundo escuro e candles verdes/vermelhos visíveis.
-2. No DS Trader abra a guia **Tela ao vivo**. Clique em **Fixar janela do gráfico**.
+2. No DS Trader abra **Monitor**. Clique em **1 Selecionar janela**.
 3. Arraste o mouse apenas sobre os candles, sem menus, login ou informações pessoais. Pressione **Esc** para cancelar.
-4. Clique em **Iniciar monitoramento**: a cada aproximadamente 1,2 segundo o aplicativo atualiza uma prévia e a observação aproximada de direção visual.
+4. Clique em **2 Iniciar monitor**: a captura tenta obter um quadro a cada 550 ms, mas a frequência real depende do Windows, do OCR e do processamento. A prévia é atualizada em ritmo menor e mostra idade dos quadros.
 5. Clique em **Parar** a qualquer momento. A captura não começa sozinha; frames são mantidos somente na memória e não são salvos nem transmitidos.
 
 **Limitações:** cores diferentes, linhas/indicadores sobrepostos, janela minimizada, conteúdo protegido, mudanças de escala, lag, velas sobrepostas e monitores com DPI especial podem impedir/alterar a leitura. A última vela é tratada como potencialmente aberta. Não usar esse modo como fonte de preço ou prova de rentabilidade. O modo CSV mantém simulação independente.

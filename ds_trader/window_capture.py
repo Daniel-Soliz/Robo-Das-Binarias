@@ -1,12 +1,13 @@
 """Identifica uma janela Windows para captura fixa, mesmo se depois for coberta.
 
-Os recortes sao relativos a janela selecionada e nao ao desktop. Nenhuma
-janela e capturada automaticamente; a selecao e iniciada pelo usuario.
+Os recortes sao relativos a janela de origem e nao ao desktop. A descoberta
+automatica so considera janelas chamadas IQ Option e nunca captura a conta.
 """
 from __future__ import annotations
 
 from dataclasses import dataclass
 import os
+import re
 import sys
 
 
@@ -31,6 +32,57 @@ class WindowTarget:
     crop: tuple[int, int, int, int]  # coordenadas locais de origem
 
 
+def auto_target_for_window(window: WindowInfo):
+    """Propose a conservative central chart ROI; never certify it as correct.
+
+    The central crop intentionally excludes the sidebar/toolbars. The visual
+    analyzer must still reject illegible regions and uncertain timestamps.
+    """
+    from ds_trader.live_screen import Region
+
+    if (window.hwnd <= 0 or window.pid <= 0 or
+            not re.match(r"^\s*IQ[\s-]*Option\b", window.title, re.IGNORECASE)):
+        return None
+    left, top, right, bottom = window.bounds
+    width, height = right - left, bottom - top
+    if width < 800 or height < 450:
+        return None
+    crop = (int(width * .14), int(height * .15),
+            int(width * .92), int(height * .83))
+    x1, y1, x2, y2 = crop
+    region = Region(left + x1, top + y1, x2 - x1, y2 - y1)
+    return region, WindowTarget(window.hwnd, window.pid, window.title,
+                                window.bounds, crop)
+
+
+class IqOptionDiscovery:
+    """Wait for a stable, unique IQ Option window before automatic capture."""
+
+    def __init__(self):
+        self._previous = None
+        self._streak = 0
+
+    def reset(self):
+        self._previous = None
+        self._streak = 0
+
+    def observe(self, windows: list[WindowInfo], *, own_pid: int):
+        options = [item for window in windows
+                   if window.pid != own_pid
+                   for item in (auto_target_for_window(window),)
+                   if item is not None]
+        if len(options) != 1:
+            self.reset()
+            return None
+        region, target = options[0]
+        if target.hwnd != self._previous:
+            self._previous = target.hwnd
+            self._streak = 1
+            return None
+        self._streak += 1
+        return (region, target) if self._streak >= 2 else None
+
+
 def choose_window_for_region(region, windows: list[WindowInfo], *, own_pid: int) -> WindowTarget:
     """A primeira janela elegivel esta mais a frente na ordem Z do Windows."""
     left, top = region.left, region.top
@@ -46,8 +98,8 @@ def choose_window_for_region(region, windows: list[WindowInfo], *, own_pid: int)
             return WindowTarget(window.hwnd, window.pid, window.title, window.bounds,
                                 (left - wl, top - wt, right - wl, bottom - wt))
     raise WindowCaptureError(
-        "Nenhuma janela identificavel contem todo o recorte. Deixe o navegador "
-        "com o grafico visivel e selecione somente a area dentro da janela."
+        "Nenhuma janela identificavel contem todo o recorte. Deixe o aplicativo "
+        "da IQ Option com o grafico visivel e selecione apenas a area das velas."
     )
 
 

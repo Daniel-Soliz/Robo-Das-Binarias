@@ -17,6 +17,7 @@ import math
 import re
 import time
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
+from ds_trader.asset_identity import FIAT, CRYPTO_QUOTES
 
 BASE_URL = "https://api.twelvedata.com/time_series"
 PAIRS = ("EUR/USD", "GBP/USD", "USD/JPY", "AUD/USD", "USD/CAD", "USD/CHF", "EUR/JPY", "EUR/GBP", "NZD/USD")
@@ -26,6 +27,38 @@ MAX_CANDLES = 120
 
 class FeedError(ValueError):
     pass
+
+
+class RateLimitError(FeedError):
+    """Provider-wide throttle, optionally carrying a bounded retry hint."""
+
+    def __init__(self, message="Limite de consultas da fonte atingido", *, retry_after_seconds=None):
+        super().__init__(message)
+        self.retry_after_seconds = retry_after_seconds
+
+
+def classify_market_symbol(symbol: str) -> str | None:
+    """Classify candidate catalog symbols without claiming provider coverage."""
+    if not isinstance(symbol, str) or not re.fullmatch(r"[A-Z0-9]{2,10}/[A-Z0-9]{3,6}", symbol):
+        return None
+    base, quote = symbol.split("/")
+    if base == quote:
+        return None
+    if base in FIAT and quote in FIAT:
+        return "FOREX"
+    if base not in FIAT and quote in CRYPTO_QUOTES:
+        return "CRYPTO"
+    return None
+
+
+@dataclass(frozen=True)
+class AssetSpec:
+    symbol: str
+    category: str
+
+    def __post_init__(self):
+        if classify_market_symbol(self.symbol) != self.category:
+            raise ValueError("Ativo/categoria invalido ou ambiguo")
 
 @dataclass(frozen=True)
 class MarketCandle:
@@ -50,6 +83,7 @@ class MarketView:
     resistance: float | None
     zone_note: str
     source: str = SOURCE
+    category: str = "FOREX"
 
 
 def _utc_time(value):
@@ -99,6 +133,15 @@ def parse_payload(payload, pair: str, interval: str, *, now=None):
     """Rejeita resposta inconsistente e vela aberta. Nunca fabrica barras em lacunas."""
     if pair not in PAIRS or interval not in INTERVALS:
         raise FeedError("Par de moedas ou periodo invalido")
+    return parse_asset_payload(payload, AssetSpec(pair, "FOREX"), interval, now=now)
+
+
+def parse_asset_payload(payload, spec: AssetSpec, interval: str, *, now=None,
+                        history_candles=MAX_CANDLES):
+    """Validate source candles of a confirmed Forex or crypto symbol."""
+    if not isinstance(spec, AssetSpec) or interval not in INTERVALS:
+        raise FeedError("Ativo ou periodo invalido")
+    pair = spec.symbol
     now = now or datetime.now(timezone.utc)
     if now.tzinfo is None:
         raise ValueError("Relogio precisa ter fuso UTC")
@@ -108,7 +151,7 @@ def parse_payload(payload, pair: str, interval: str, *, now=None):
     if payload.get("status") == "error" or payload.get("code") in (400, 401, 403, 404, 429):
         code = payload.get("code")
         if str(code) == "429":
-            raise FeedError("Limite de creditos/consultas da Twelve Data atingido")
+            raise RateLimitError("Limite de creditos/consultas da Twelve Data atingido")
         raise FeedError(f"Fornecedor recusou a consulta ({code or 'erro de API'}). Confira chave, plano e par")
     meta = payload.get("meta")
     if not isinstance(meta, dict):
@@ -137,7 +180,9 @@ def parse_payload(payload, pair: str, interval: str, *, now=None):
     candles = [c for c in candles if c.opened + timedelta(seconds=seconds+5) <= now]
     if not candles:
         raise FeedError("Aguardando o fechamento de um candle com horario verificavel")
-    candles = candles[-MAX_CANDLES:]
+    if not 25 <= history_candles <= 288:
+        raise FeedError("Historico solicitado fora do limite seguro")
+    candles = candles[-history_candles:]
     latest = candles[-1]
     closed_at = latest.opened + timedelta(seconds=seconds)
     age = (now - closed_at).total_seconds()
@@ -145,7 +190,7 @@ def parse_payload(payload, pair: str, interval: str, *, now=None):
         raise FeedError("Cotacao do fornecedor veio com horario futuro")
     # Dados mais antigos que 3 intervalos nunca sao rotulados como atuais.
     status = "ATUALIZADO" if age <= max(3*seconds, 180) else "ATRASADO / MERCADO SEM NOVAS COTACOES"
-    if status=="ATUALIZADO" and not reference_forex_open(now):
+    if status=="ATUALIZADO" and spec.category=="FOREX" and not reference_forex_open(now):
         status="FORA DO HORARIO REGULAR FOREX (REFERENCIA NOVA YORK)"
     # Descarta qualquer historia anterior a lacuna, inclusive fim de semana.
     start = len(candles)-1
@@ -153,8 +198,10 @@ def parse_payload(payload, pair: str, interval: str, *, now=None):
         start-=1
     consecutive = tuple(candles[start:])
     trend, support, resistance, zone_note, summary = analyze(consecutive, status)
+    source = SOURCE if spec.category == "FOREX" else "Twelve Data Crypto"
     return MarketView(pair, interval, consecutive, now, closed_at, age,
-                      status, summary, trend, support, resistance, zone_note)
+                      status, summary, trend, support, resistance, zone_note,
+                      source=source, category=spec.category)
 
 
 def _pivots(candles, field, left=2, right=2):
@@ -207,12 +254,23 @@ def analyze(candles: tuple[MarketCandle, ...], status: str):
 
 def fetch_candles(api_key: str, pair: str, interval: str, *, timeout=12, opener=None, now=None):
     """Usa so endpoint de candles. A chave NAO entra em logs, reports nem bancos."""
-    if not api_key or len(api_key.strip()) < 6 or any(c.isspace() for c in api_key):
-        raise FeedError("Insira uma chave de API Twelve Data valida")
     if pair not in PAIRS or interval not in INTERVALS:
         raise FeedError("Par/intervalo nao permitido")
-    params = urlencode({"symbol":pair,"interval":interval,"timezone":"UTC",
-                        "outputsize":160,"order":"DESC","apikey":api_key})
+    return fetch_asset_candles(api_key, AssetSpec(pair, "FOREX"), interval,
+                               timeout=timeout, opener=opener, now=now)
+
+
+def fetch_asset_candles(api_key: str, spec: AssetSpec, interval: str, *, timeout=12, opener=None,
+                        now=None, history_candles=MAX_CANDLES):
+    """Read-only provider adapter; never sends a trading order."""
+    if not api_key or len(api_key.strip()) < 6 or any(c.isspace() for c in api_key):
+        raise FeedError("Insira uma chave de API Twelve Data valida")
+    if not isinstance(spec, AssetSpec) or interval not in INTERVALS:
+        raise FeedError("Par/intervalo nao permitido")
+    if not 25 <= history_candles <= 288:
+        raise FeedError("Historico solicitado fora do limite seguro")
+    params = urlencode({"symbol":spec.symbol,"interval":interval,"timezone":"UTC",
+                        "outputsize":max(160,history_candles+10),"order":"DESC","apikey":api_key})
     req = Request(BASE_URL + "?" + params, headers={"Accept":"application/json","User-Agent":"DS-Trader/1.1"}, method="GET")
     try:
         response = (opener or urlopen)(req, timeout=timeout)
@@ -222,14 +280,22 @@ def fetch_candles(api_key: str, pair: str, interval: str, *, timeout=12, opener=
             raise FeedError("Resposta de mercado excessivamente grande")
         payload=json.loads(raw)
     except HTTPError as exc:
-        if exc.code==429: raise FeedError("Limite de consultas da Twelve Data (HTTP 429)") from None
+        if exc.code==429:
+            hint = exc.headers.get("Retry-After") if exc.headers else None
+            try:
+                delay = max(1, min(3600, int(hint)))
+            except (TypeError, ValueError):
+                delay = None
+            raise RateLimitError("Limite de consultas da Twelve Data (HTTP 429)",
+                                 retry_after_seconds=delay) from None
         if exc.code in (401,403): raise FeedError("Chave de API ou permissao de acesso recusada") from None
         raise FeedError(f"Falha HTTP {exc.code} no fornecedor de dados") from None
     except (URLError,TimeoutError,OSError):
         raise FeedError("Conexao com fornecedor de cotacoes indisponivel") from None
     except (json.JSONDecodeError,UnicodeDecodeError):
         raise FeedError("Resposta JSON invalida do fornecedor") from None
-    return parse_payload(payload,pair,interval,now=now)
+    return parse_asset_payload(payload, spec, interval, now=now,
+                               history_candles=history_candles)
 
 
 class ForexWatcher:

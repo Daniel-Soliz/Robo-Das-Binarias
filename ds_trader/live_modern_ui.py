@@ -7,6 +7,8 @@ from __future__ import annotations
 
 from datetime import datetime
 from queue import Empty
+import os
+import sys
 import time
 import tkinter as tk
 from tkinter import ttk, messagebox
@@ -14,21 +16,19 @@ from tkinter import ttk, messagebox
 from ds_trader.live_ui import RegionPicker
 from ds_trader.live_screen import ScreenMonitor
 from ds_trader.m1_cycle import M1Cycle
+from ds_trader.active_tracking import (ActiveAssetTracking, focus_identity,
+                                       format_active_focus)
 from ds_trader.live_presentation import presentation_for, screen_region_is_obscured
+from ds_trader.theme import BG, PANEL, PANEL_2, TEXT, MUTED, ACCENT
 from ds_trader.window_capture import (WindowCaptureError, select_window_for_region,
-                                      WindowTarget)
+                                      enumerate_windows, IqOptionDiscovery, WindowTarget)
 
 
-BG = "#08111f"
-PANEL = "#101c2d"
-PANEL_2 = "#15243a"
-EDGE = "#263b53"
-TEXT = "#e9f3ff"
-MUTED = "#91a5bb"
-CYAN = "#46c9ef"
-GREEN = "#41d8a4"
-RED = "#ff7584"
-AMBER = "#ffc56b"
+EDGE = "#2b3948"
+CYAN = ACCENT
+GREEN = "#5cdbb0"
+RED = "#fd8991"
+AMBER = "#e9bd78"
 
 SIDE_COLORS = {"CALL": GREEN, "PUT": RED, "AGUARDAR": AMBER}
 
@@ -43,8 +43,8 @@ def _label(parent, text="", *, size=10, weight="normal", color=TEXT,
 
 
 def _button(parent, text, command, *, primary=False, stop=False):
-    bg = "#0875a6" if primary else "#57313d" if stop else PANEL_2
-    hover = "#1593c3" if primary else "#70414d" if stop else "#243d59"
+    bg = "#187d91" if primary else "#393037" if stop else PANEL_2
+    hover = "#2395a9" if primary else "#5a3c47" if stop else "#304456"
     widget = tk.Button(
         parent, text=text, command=command, bg=bg, fg=TEXT,
         activebackground=hover, activeforeground="#ffffff",
@@ -76,10 +76,17 @@ class LiveScreenTab:
         self._stale_notified = False
         self._last_rendered_at = 0.0
         self._details_open = False
-        self.timeframe = tk.StringVar(value="M1")
+        self._radar_rows = ()
+        self.timeframe = tk.StringVar(value="M5")
         self.m1_cycle = M1Cycle()
         self.cycle_message = tk.StringVar(
-            value=self.m1_cycle.block_visual("M1").reason
+            value=self.m1_cycle.block_visual("M5").reason
+        )
+        self.active_tracking = ActiveAssetTracking()
+        self._market_key_supplier = lambda: ""
+        self.active_context = tk.StringVar(
+            value="M5 · AGUARDAR identificação do par na IQ Option. "
+                  "Não há entrada operacional validada."
         )
         self.status = tk.StringVar(value="DESLIGADO · Selecione a área do gráfico")
         self.next_opinion = tk.StringVar(value="AGUARDAR")
@@ -92,22 +99,30 @@ class LiveScreenTab:
         self.summary_text = tk.StringVar(value="Nenhum dado recebido")
         self.evidence_text = tk.StringVar(value="—")
         self.signal_subtitle = tk.StringVar(value="CAPTURA NÃO INICIADA")
+        self.visual_bias = tk.StringVar(value="SEM VANTAGEM CLARA")
+        self.visual_reason = tk.StringVar(value="Aguardando gráfico.")
         self.quality_status = tk.StringVar(value="Sem dados")
+        self.speed_status = tk.StringVar(value="MOTOR PRONTO  ·  SEM CAPTURA")
         self._picker = None
+        self._auto_enabled = tk.BooleanVar(value=sys.platform == "win32")
+        self._auto_paused = False
+        self._auto_region = False
+        self._auto_guard = IqOptionDiscovery()
+        self._auto_id = None
 
-        container = tk.Frame(parent, bg=BG, padx=13, pady=11)
+        container = tk.Frame(parent, bg=BG, padx=19, pady=15)
         container.pack(fill="both", expand=True)
         self.container = container
 
         # Fluxo principal: selecionar o gráfico, iniciar, acompanhar o estado.
         header = tk.Frame(container, bg=BG)
-        header.pack(fill="x", pady=(0, 12))
+        header.pack(fill="x", pady=(0, 14))
         heading = tk.Frame(header, bg=BG)
         heading.pack(side="left", fill="x", expand=True)
-        _label(heading, "Monitor ao vivo", size=19, weight="bold").pack(anchor="w")
+        _label(heading, "Análise em tempo real", size=23, weight="bold").pack(anchor="w")
         _label(
-            heading, "Selecione a região das velas e acompanhe a leitura visual em uma única tela.",
-            size=9, color=MUTED,
+            heading, "Gráfico, estruturas e cenário da próxima vela — tudo em um lugar.",
+            size=10, color=MUTED,
         ).pack(anchor="w", pady=(3, 0))
         self.online_badge = _label(
             header, "●  MONITORAMENTO DESLIGADO", color=AMBER,
@@ -116,17 +131,24 @@ class LiveScreenTab:
         self.online_badge.pack(side="right")
 
         toolbar = tk.Frame(container, bg=PANEL, highlightbackground=EDGE,
-                           highlightthickness=1, padx=10, pady=7)
-        toolbar.pack(fill="x", pady=(0, 10))
-        self.pick_btn = _button(toolbar, "1 · Selecionar gráfico", self.select)
-        self.pick_btn.pack(side="left", padx=(0, 9))
-        self.start_btn = _button(toolbar, "2 · Iniciar análise", self.start, primary=True)
+                           highlightthickness=1, padx=13, pady=10)
+        toolbar.pack(fill="x", pady=(0, 13))
+        self.pick_btn = _button(toolbar, "1  Selecionar janela", self.select)
+        self.pick_btn.pack(side="left", padx=(0, 8))
+        self.start_btn = _button(toolbar, "2  Iniciar monitor", self.start, primary=True)
         self.start_btn.configure(state="disabled")
-        self.start_btn.pack(side="left", padx=(0, 9))
+        self.start_btn.pack(side="left", padx=(0, 8))
         self.stop_btn = _button(toolbar, "Parar", self.stop, stop=True)
         self.stop_btn.configure(state="disabled")
-        self.stop_btn.pack(side="left", padx=(0, 15))
-        _label(toolbar, "Período:", size=9, color=MUTED).pack(side="left", padx=(4, 7))
+        self.stop_btn.pack(side="left", padx=(0, 18))
+        self.auto_check = tk.Checkbutton(
+            toolbar, text="Detectar IQ Option", variable=self._auto_enabled,
+            command=self._auto_toggled, bg=PANEL, fg=TEXT,
+            selectcolor=PANEL_2, activebackground=PANEL,
+            activeforeground=TEXT, font=("Segoe UI", 9),
+        )
+        self.auto_check.pack(side="left", padx=(0, 10))
+        _label(toolbar, "GRÁFICO", size=8, weight="bold", color=MUTED).pack(side="left", padx=(2, 7))
         self.period_select = ttk.Combobox(
             toolbar, values=("M1", "M5", "M15"), textvariable=self.timeframe,
             state="readonly", width=5, font=("Segoe UI", 10),
@@ -141,61 +163,85 @@ class LiveScreenTab:
         workspace.pack(fill="both", expand=True)
         workspace.grid_rowconfigure(0, weight=1)
         workspace.grid_columnconfigure(0, weight=1)
-        workspace.grid_columnconfigure(1, minsize=305)
+        workspace.grid_columnconfigure(1, minsize=350)
 
         left = tk.Frame(workspace, bg=PANEL, highlightbackground=EDGE, highlightthickness=1)
-        left.grid(row=0, column=0, sticky="nsew", padx=(0, 10))
-        left_head = tk.Frame(left, bg=PANEL, padx=12, pady=8)
+        left.grid(row=0, column=0, sticky="nsew", padx=(0, 14))
+        left_head = tk.Frame(left, bg=PANEL, padx=16, pady=12)
         left_head.pack(fill="x")
-        _label(left_head, "GRÁFICO CAPTURADO", weight="bold", size=10).pack(side="left")
+        _label(left_head, "VISUALIZAÇÃO DA TELA", weight="bold", size=10).pack(side="left")
         self.preview_marker = _label(left_head, "●  SEM CAPTURA", size=9, color=MUTED)
         self.preview_marker.pack(side="right")
 
-        preview_area = tk.Frame(left, bg="#070f1c")
-        preview_area.pack(fill="both", expand=True, padx=10, pady=(0, 8))
+        preview_area = tk.Frame(left, bg="#0b141e")
+        preview_area.pack(fill="both", expand=True, padx=11, pady=(0, 9))
         self.image_label = tk.Label(
-            preview_area, bg="#070f1c", fg=MUTED, font=("Segoe UI", 11),
-            text="O gráfico aparecerá aqui.\n\nClique em Selecionar gráfico\ne marque somente as velas.",
+            preview_area, bg="#0b141e", fg=MUTED, font=("Segoe UI", 12),
+            text="Seu gráfico aparecerá aqui\n\nSelecione a janela da IQ Option\ne marque somente a região das velas.",
             justify="center", anchor="center",
         )
         self.image_label.pack(fill="both", expand=True)
         self.image_label.bind("<Configure>", self._resize_preview)
 
-        left_bottom = tk.Frame(left, bg=PANEL, padx=12, pady=4)
+        left_bottom = tk.Frame(left, bg=PANEL, padx=16, pady=5)
         left_bottom.pack(fill="x")
         _label(left_bottom, "", size=9, color=MUTED,
                textvariable=self.last_update).pack(anchor="w", pady=(0, 5))
-        _label(left_bottom, "Não minimize a janela de origem.",
-               size=9, color=MUTED).pack(anchor="w", pady=(0, 4))
+        _label(left_bottom, "", textvariable=self.speed_status,
+               size=9, color=CYAN).pack(anchor="w", pady=(0, 3))
 
-        right = tk.Frame(workspace, bg=BG, width=305)
-        right.grid(row=0, column=1, sticky="nsew")
-        right.grid_propagate(False)
-        right.grid_columnconfigure(0, weight=1)
+        right_holder = tk.Frame(workspace, bg=BG, width=350)
+        right_holder.grid(row=0, column=1, sticky="nsew")
+        right_holder.grid_propagate(False)
+        right_canvas = tk.Canvas(right_holder, bg=BG, highlightthickness=0, bd=0)
+        right_scroll = ttk.Scrollbar(right_holder, orient="vertical",
+                                     command=right_canvas.yview)
+        right_scroll.pack(side="right", fill="y")
+        right_canvas.pack(side="left", fill="both", expand=True)
+        right_canvas.configure(yscrollcommand=right_scroll.set)
+        right = tk.Frame(right_canvas, bg=BG)
+        window = right_canvas.create_window((0, 0), window=right, anchor="nw")
+        right.bind("<Configure>", lambda _e: right_canvas.configure(
+            scrollregion=right_canvas.bbox("all")))
+        right_canvas.bind("<Configure>", lambda e: right_canvas.itemconfigure(
+            window, width=e.width))
+        self.right_canvas = right_canvas
 
         signal_card = tk.Frame(right, bg=PANEL, highlightbackground=EDGE,
-                               highlightthickness=1, padx=15, pady=12)
-        signal_card.pack(fill="x", pady=(0, 10))
-        _label(signal_card, "ESTADO DA ANÁLISE", color=MUTED,
-               size=9, weight="bold").pack(anchor="w")
-        self.signal_label = _label(signal_card, "", textvariable=self.next_opinion,
-                                   size=29, color=AMBER, weight="bold")
-        self.signal_label.pack(anchor="w", pady=(5, 2))
+                               highlightthickness=1, padx=18, pady=16)
+        signal_card.pack(fill="x", pady=(0, 12))
+        _label(signal_card, "PRÓXIMA VELA  /  CENÁRIO VISUAL", color=MUTED,
+               size=9, weight="bold").pack(anchor="w", pady=(0, 4))
+        self.visual_bias_label = _label(
+            signal_card, "", textvariable=self.visual_bias, size=20,
+            color=CYAN, weight="bold", wraplength=310,
+        )
+        self.visual_bias_label.pack(anchor="w", pady=(4, 5))
+        _label(signal_card, "", textvariable=self.visual_reason,
+               size=10, color=MUTED, wraplength=310).pack(anchor="w", pady=(1, 12))
+        tk.Frame(signal_card, height=1, bg=EDGE).pack(fill="x", pady=(0, 10))
+        validation = tk.Frame(signal_card, bg=PANEL)
+        validation.pack(fill="x")
+        _label(validation, "VALIDAÇÃO", color=MUTED, size=8,
+               weight="bold").pack(side="left", padx=(0, 14))
+        self.signal_label = _label(validation, "", textvariable=self.next_opinion,
+                                   size=13, color=AMBER, weight="bold")
+        self.signal_label.pack(side="left")
         self.signal_context = _label(
             signal_card, "", textvariable=self.signal_subtitle,
-            color=AMBER, size=9, weight="bold", wraplength=270,
+            color=AMBER, size=9, weight="bold", wraplength=310,
         )
-        self.signal_context.pack(anchor="w")
+        self.signal_context.pack(anchor="w", pady=(4, 0))
         _label(
             signal_card,
             "Leitura educacional · nenhuma ordem é enviada",
-            size=8, color=MUTED, wraplength=270,
+            size=8, color=MUTED, wraplength=310,
         ).pack(anchor="w", pady=(8, 0))
 
         analysis_card = tk.Frame(right, bg=PANEL, highlightbackground=EDGE,
-                                 highlightthickness=1, padx=13, pady=11)
-        analysis_card.pack(fill="x", pady=(0, 10))
-        _label(analysis_card, "RESUMO DO GRÁFICO", size=10, weight="bold").pack(anchor="w", pady=(0, 6))
+                                 highlightthickness=1, padx=16, pady=13)
+        analysis_card.pack(fill="x", pady=(0, 12))
+        _label(analysis_card, "LEITURA TÉCNICA", size=10, weight="bold").pack(anchor="w", pady=(0, 7))
         for title, var in (
             ("LEITURA", self.quality_status),
             ("PADRÕES", self.pattern_text),
@@ -203,9 +249,9 @@ class LiveScreenTab:
         ):
             _label(analysis_card, title, size=8, color=MUTED, weight="bold").pack(anchor="w", pady=(3, 1))
             _label(analysis_card, "", textvariable=var,
-                   wraplength=275, size=9).pack(anchor="w", pady=(0, 3))
+                   wraplength=310, size=9).pack(anchor="w", pady=(0, 4))
 
-        self.details_toggle = _button(right, "Detalhes técnicos  ▾", self.toggle_details)
+        self.details_toggle = _button(right, "Ver explicação detalhada  ▾", self.toggle_details)
         self.details_toggle.pack(fill="x", pady=(0, 8))
         self.advanced_content = tk.Frame(right, bg=BG)
         m1_card = tk.Frame(self.advanced_content, bg="#202333", highlightbackground=EDGE,
@@ -231,13 +277,89 @@ class LiveScreenTab:
         self._set_detail("Aguardando captura. O app não envia ordens e não "
                          "confirma o fechamento da vela pela imagem.")
 
-        notice = tk.Frame(container, bg="#142436", padx=10, pady=5)
+        focus = tk.Frame(container, bg=PANEL, padx=12, pady=10,
+                         highlightbackground=EDGE, highlightthickness=1)
+        focus.pack(fill="x", pady=(10, 0))
+        _label(focus, "ATIVO DETECTADO · HISTÓRICO M5 ATÉ 24 HORAS",
+               size=9, weight="bold", color=ACCENT).pack(anchor="w", pady=(0, 5))
+        _label(focus, "", textvariable=self.active_context, size=9,
+               color=TEXT, wraplength=1040).pack(fill="x")
+
+        # Radar compacto sob o gráfico: dados recebidos da aba Radar;
+        # nenhum preço ou resultado é criado para preencher a tabela.
+        radar_bar = tk.Frame(container, bg=PANEL, padx=12, pady=8,
+                             highlightbackground=EDGE, highlightthickness=1)
+        radar_bar.pack(fill="x", pady=(10, 0))
+        title_bar = tk.Frame(radar_bar, bg=PANEL)
+        title_bar.pack(fill="x", pady=(0, 6))
+        _label(title_bar, "RADAR FOREX + CRIPTO", size=9, weight="bold").pack(side="left")
+        _label(title_bar, "Dados externos · configure na aba Radar", size=8,
+               color=MUTED).pack(side="right")
+        self.radar_preview = ttk.Treeview(
+            radar_bar, columns=("market", "status", "trend", "closed"),
+            show="tree headings", height=6,
+        )
+        self.radar_preview.heading("#0", text="ATIVO")
+        self.radar_preview.column("#0", width=150, minwidth=100)
+        for name, title, width in (("market", "MERCADO", 110),
+                                    ("status", "ESTADO", 150),
+                                    ("trend", "TENDÊNCIA", 115),
+                                    ("closed", "ÚLTIMO FECHAMENTO", 175)):
+            self.radar_preview.heading(name, text=title)
+            self.radar_preview.column(name, width=width, minwidth=90)
+        self.radar_preview.pack(fill="x")
+
+        notice = tk.Frame(container, bg=PANEL, padx=13, pady=7)
         notice.pack(fill="x", pady=(8, 0))
         _label(
             notice,
-            "Somente pixels. A captura não confirma fechamento, horário ou vencimento na IQ Option.",
-            size=9, color="#aac0d5", bg="#142436", wraplength=980,
+            "Detecção automática usa um recorte estimado: se não identificar as velas, "
+            "selecione a região manualmente. Pixels não confirmam horário/vencimento.",
+            size=9, color=MUTED, bg=PANEL, wraplength=1100,
         ).pack(anchor="w")
+        if sys.platform == "win32":
+            self._schedule_auto()
+
+    def _schedule_auto(self):
+        if self._auto_id is None and sys.platform == "win32":
+            self._auto_id = self.root.after(1500, self._scan_iq_option)
+
+    def _auto_toggled(self):
+        if self._auto_enabled.get():
+            self._auto_paused = False
+            self._auto_guard.reset()
+            # Clear stopped automatic ROI so a reopened IQ Option can be found.
+            if self._auto_region and not self.active:
+                self.region = None
+                self.window_target = None
+                self._auto_region = False
+                self.start_btn.configure(state="disabled")
+            self.status.set("Procurando janela da IQ Option...")
+        else:
+            self._auto_paused = True
+            self._auto_guard.reset()
+
+    def _scan_iq_option(self):
+        self._auto_id = None
+        try:
+            if (sys.platform != "win32" or not self._auto_enabled.get() or
+                    self._auto_paused or self.active or self.region is not None or
+                    self._picker is not None):
+                return
+            found = self._auto_guard.observe(enumerate_windows(), own_pid=os.getpid())
+            if found is None:
+                self.status.set("Procurando janela da IQ Option...")
+                return
+            region, window = found
+            self._auto_region = True
+            self.selected(region, window_target=window)
+            self.start()
+            self.status.set("IQ Option detectada · recorte automático em análise "
+                            "(confirme as velas no painel)")
+        except WindowCaptureError as exc:
+            self.status.set(f"Detecção automática indisponível: {exc}")
+        finally:
+            self._schedule_auto()
 
     def toggle_details(self):
         self._details_open = not self._details_open
@@ -247,13 +369,40 @@ class LiveScreenTab:
             self._render_detail()
         else:
             self.advanced_content.pack_forget()
-            self.details_toggle.configure(text="Detalhes técnicos  ▾")
+            self.details_toggle.configure(text="Ver explicação detalhada  ▾")
+
+    def update_radar_preview(self, rows):
+        """UI-only callback invoked by RadarTab's Tk poll, never by a worker."""
+        self._radar_rows = tuple(rows)
+        present = {row.symbol for row in self._radar_rows}
+        for iid in self.radar_preview.get_children():
+            if iid not in present:
+                self.radar_preview.delete(iid)
+        for row in self._radar_rows:
+            values = (row.category, row.status, row.direction, row.last_closed)
+            if self.radar_preview.exists(row.symbol):
+                self.radar_preview.item(row.symbol, values=values)
+            else:
+                self.radar_preview.insert("", "end", iid=row.symbol,
+                                          text=row.symbol, values=values)
+
+    @staticmethod
+    def _set_if_changed(variable, value):
+        """Impede redesenho e callbacks de rastreamento para valores idênticos."""
+        if variable.get() != value:
+            variable.set(value)
 
     def _refresh_cycle_guard(self):
         # Captura WGC/mss só revela pixels. Nenhuma barra/quote entra na máquina
         # M1 com flags "confirmados" por inferência de imagem.
         status = self.m1_cycle.block_visual(self.timeframe.get())
         self.cycle_message.set(status.reason)
+        if self.timeframe.get() != "M5":
+            self.active_tracking.observe(None)
+            self.active_context.set(
+                f"{self.timeframe.get()} selecionado · AGUARDAR. "
+                "O acompanhamento automático exige M5 no gráfico e no Monitor."
+            )
 
     def _set_detail(self, text):
         if text == self._detail_cache:
@@ -307,7 +456,7 @@ class LiveScreenTab:
 
     def select(self):
         if self.active:
-            self.stop()
+            self.stop(user_requested=False)
         try:
             # Esconde o DS Trader antes de selecionar para não capturar a própria janela.
             self._picker = RegionPicker(
@@ -316,7 +465,7 @@ class LiveScreenTab:
             self.root.withdraw()
             self._picker.window.lift()
             self._picker.window.focus_force()
-            self.status.set("Arraste dentro da janela do navegador que deseja fixar. Esc cancela.")
+            self.status.set("Arraste sobre as velas na janela da IQ Option. Esc cancela.")
         except Exception as exc:
             self._restore_window()
             messagebox.showerror("Selecionar gráfico", str(exc), parent=self.root)
@@ -334,6 +483,8 @@ class LiveScreenTab:
             self.status.set(str(exc))
             messagebox.showwarning("Fixar janela do grafico", str(exc), parent=self.root)
             return
+        self._auto_region = False
+        self._auto_enabled.set(False)
         self.selected(region, window_target=target)
 
     def selected(self, region, *, window_target: WindowTarget | None = None):
@@ -355,6 +506,9 @@ class LiveScreenTab:
             image="", text="Área selecionada.\n\nClique em Iniciar análise para acompanhar.")
         self.next_opinion.set("AGUARDAR")
         self.signal_subtitle.set("AGUARDANDO PRIMEIRA LEITURA")
+        self.visual_bias.set("SEM VANTAGEM CLARA")
+        self.visual_reason.set("Aguardando os primeiros candles reconhecidos.")
+        self.speed_status.set("MOTOR PRONTO  ·  AGUARDANDO CAPTURA")
         self._refresh_cycle_guard()
         self._set_detail("Nenhuma imagem foi capturada ainda. "
                          "Mantenha a IQ Option visível ao lado do DS Trader.")
@@ -367,12 +521,15 @@ class LiveScreenTab:
                                 parent=self.root)
             return
         # No Windows não voltar silenciosamente a gravar o desktop inteiro.
-        import sys
         if sys.platform == "win32" and self.window_target is None:
             messagebox.showinfo("DS Trader", "Fixe primeiro a janela do grafico pelo botao.",
                                 parent=self.root)
             return
-        self.monitor = ScreenMonitor(self.region, interval_seconds=0.65,
+        self.active_tracking.stop(wait=False)
+        self.active_tracking = ActiveAssetTracking()
+        self.active_tracking.configure_key(self._market_key_supplier())
+        self.active_tracking.start()
+        self.monitor = ScreenMonitor(self.region, interval_seconds=0.55,
                                      window_target=self.window_target)
         self.active = True
         self.pick_btn.configure(state="disabled")
@@ -387,36 +544,72 @@ class LiveScreenTab:
         self.monitor.start()
         self.poll()
 
+    def set_market_key_supplier(self, supplier):
+        """Supplier runs exclusively on Tk thread; provider work stays on worker."""
+        self._market_key_supplier = supplier
+
     def _present(self, result):
         # Em captura WGC outras janelas na frente nao encobrem a origem.
         obscured = self.window_target is None and self._overlaps_selected_region()
         state = presentation_for(result, obscured=obscured)
-        self.next_opinion.set(state.side)
+        if result.identity_required:
+            self._set_if_changed(
+                self.meta_text,
+                (f"{result.asset} · {result.asset_timeframe}"
+                 + (" · OTC" if result.asset_otc else ""))
+                if result.identity_confirmed else "Ativo não confirmado",
+            )
+        self.active_tracking.configure_key(self._market_key_supplier())
+        self.active_tracking.observe(focus_identity(
+            result, selected_timeframe=self.timeframe.get()))
+        self._set_if_changed(self.next_opinion, state.side)
         self.signal_label.configure(fg=SIDE_COLORS[state.side])
         self.signal_context.configure(fg=SIDE_COLORS[state.side])
-        self.signal_subtitle.set(state.subtitle)
-        self.status.set(state.status)
+        self._set_if_changed(self.signal_subtitle, state.subtitle)
+        self._set_if_changed(self.visual_bias, state.outlook)
+        self._set_if_changed(self.visual_reason, state.outlook_reason)
+        self.visual_bias_label.configure(
+            fg=CYAN if state.outlook == "ALTA FAVORECIDA" else
+               "#ffb166" if state.outlook == "BAIXA FAVORECIDA" else AMBER)
+        self._set_if_changed(self.status, state.status)
         # O bloqueio temporal da IQ Option só muda ao selecionar período/
         # iniciar/parar; recalculá-lo em cada frame causava repinturas extras.
-        self.quality_status.set("Gráfico encoberto" if obscured else
-                                "Janela fixada; sem horário verificado"
-                                if self.window_target and result.valid_roi else
-                                "Recorte legível; sem horário verificado"
-                                if result.valid_roi else "Leitura insuficiente")
-        self.pattern_text.set(state.pattern)
-        self.structure_text.set(state.structure)
+        self._set_if_changed(self.quality_status, "Gráfico encoberto" if obscured else
+                             "Janela fixada; sem horário verificado"
+                             if self.window_target and result.valid_roi else
+                             "Recorte legível; sem horário verificado"
+                             if result.valid_roi else "Leitura insuficiente")
+        self._set_if_changed(self.pattern_text, state.pattern)
+        self._set_if_changed(self.structure_text, state.structure)
         self._set_detail(state.detail)
-        self.observation.set(state.detail)
-        self.structures.set(state.structure)
+        self._set_if_changed(self.observation, state.detail)
+        self._set_if_changed(self.structures, state.structure)
+        self._set_if_changed(
+            self.speed_status,
+            f"PROCESSAMENTO  {result.analysis_ms:.0f} ms   ·   "
+            f"IDADE DO QUADRO  {result.capture_age_ms:.0f} ms   ·   "
+            f"{result.detected} CANDLES",
+        )
         try:
             ts = datetime.fromisoformat(result.captured_at).astimezone()
             local_time = ts.strftime("%H:%M:%S")
         except (TypeError, ValueError):
             local_time = "—"
-        self.last_update.set(
+        self._set_if_changed(self.last_update,
             f"Última captura: {local_time} (horário do PC)  ·  "
             f"{state.detected_label}  ·  {self.timeframe.get()} informado"
         )
+
+    def _notify_stale(self):
+        self._stale_notified = True
+        self.preview_marker.configure(text="●  LEITURA ATRASADA", fg=AMBER)
+        self.next_opinion.set("AGUARDAR")
+        self.signal_subtitle.set("Sem quadro recente · monitoramento atrasado")
+        self.visual_bias.set("SEM DADOS RECENTES")
+        self.visual_reason.set("A última imagem está atrasada; cenário suspenso.")
+        self.visual_bias_label.configure(fg=AMBER)
+        self.speed_status.set("SEM QUADRO RECENTE  ·  CAPTURA ATRASADA")
+        self.active_tracking.observe(None)
 
     def poll(self):
         self.after_id = None
@@ -426,33 +619,51 @@ class LiveScreenTab:
             while True:
                 item = self.monitor.results.get_nowait()
                 if item[0] == "error":
-                    self.stop()
+                    self.stop(user_requested=False)
                     self.quality_status.set("Erro de captura")
                     self.status.set(item[1])
                     self._set_detail(item[1])
+                    if self._auto_region:
+                        self.region = None
+                        self.window_target = None
+                        self._auto_region = False
+                        self._auto_guard.reset()
+                        self.start_btn.configure(state="disabled")
                     return
                 result, frame = item
+                # Queue/poll delay is not included in the worker's age:
+                # check age at the exact moment Tk is about to present it.
+                if (result.stale_frame or
+                    (result.capture_monotonic is not None and
+                     time.monotonic() - result.capture_monotonic > 2.5)):
+                    self._notify_stale()
+                    continue
                 self.last_frame = frame
                 self._last_preview_size = None
                 self._last_preview_at = time.monotonic()
                 self._stale_notified = False
                 # O estado textual responde a todo resultado; a miniatura
                 # só precisa ser atualizada ~1 vez/s para poupar o Tkinter.
-                if time.monotonic() - self._last_rendered_at >= .9:
+                if time.monotonic() - self._last_rendered_at >= .65:
                     self._resize_preview()
                 self._present(result)
                 self.preview_marker.configure(text="●  RECEBENDO IMAGENS", fg=CYAN)
         except Empty:
             pass
+        for event in self.active_tracking.drain():
+            self._set_if_changed(self.active_context, format_active_focus(event))
+        latest_focus = self.active_tracking.current_status()
+        if latest_focus is not None:
+            self._set_if_changed(self.active_context, format_active_focus(latest_focus))
         if (self._last_preview_at is not None and not self._stale_notified and
                 time.monotonic() - self._last_preview_at > 3.0):
-            self._stale_notified = True
-            self.preview_marker.configure(text="●  LEITURA ATRASADA", fg=AMBER)
-            self.next_opinion.set("AGUARDAR")
-            self.signal_subtitle.set("Sem quadro recente · monitoramento atrasado")
-        self.after_id = self.root.after(180, self.poll)
+            self._notify_stale()
+        self.after_id = self.root.after(120, self.poll)
 
-    def stop(self):
+    def stop(self, *, user_requested=True):
+        if user_requested:
+            self._auto_paused = True
+            self._auto_enabled.set(False)
         self.active = False
         if self.after_id is not None:
             self.root.after_cancel(self.after_id)
@@ -460,12 +671,18 @@ class LiveScreenTab:
         if self.monitor is not None:
             self.monitor.stop(wait=False)
             self.monitor = None
+        self.active_tracking.stop(wait=False)
+        self.active_context.set("M5 · AGUARDAR. Monitor parado; nenhum par em acompanhamento.")
         self.pick_btn.configure(state="normal")
         self.start_btn.configure(state="normal" if self.region is not None else "disabled")
         self.stop_btn.configure(state="disabled")
         self.online_badge.configure(text="●  MONITORAMENTO DESLIGADO", fg=AMBER)
         self.preview_marker.configure(text="●  PAUSADO", fg=MUTED)
         self.next_opinion.set("AGUARDAR")
+        self.visual_bias.set("SEM VANTAGEM CLARA")
+        self.visual_reason.set("Monitoramento parado.")
+        self.visual_bias_label.configure(fg=AMBER)
+        self.speed_status.set("MONITOR PARADO  ·  SEM CAPTURA ATIVA")
         self.signal_label.configure(fg=AMBER)
         self.signal_context.configure(fg=AMBER)
         self.signal_subtitle.set("CAPTURA INTERROMPIDA")
@@ -476,4 +693,7 @@ class LiveScreenTab:
                          "continuar na prévia, mas não há análise em andamento.")
 
     def shutdown(self):
-        self.stop()
+        if self._auto_id is not None:
+            self.root.after_cancel(self._auto_id)
+            self._auto_id = None
+        self.stop(user_requested=False)

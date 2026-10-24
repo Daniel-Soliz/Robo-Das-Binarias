@@ -39,9 +39,34 @@ if ($LASTEXITCODE -ne 0) { throw 'Falha ao instalar dependencias de build' }
 Write-Host 'FASE 2/8: instalar dependencias de captura'
 python -m pip install -r requirements-runtime.txt
 if ($LASTEXITCODE -ne 0) { throw 'Falha ao instalar dependencias da captura de tela' }
+python -m pip install -r requirements-test.txt
+if ($LASTEXITCODE -ne 0) { throw 'Falha ao instalar o executor de testes' }
 Write-Host 'FASE 3/8: testar modulos e motor'
-python -m unittest discover -s tests_ds -v
+python -m pytest -q -rs
 if ($LASTEXITCODE -ne 0) { throw 'Testes do motor falharam' }
+
+# O executavel OCR deve acompanhar o aplicativo; pytesseract sozinho nao le texto.
+# Procurar primeiro a instalacao existente da maquina de build.
+$tesseractCandidates = @()
+if ($env:ProgramFiles) { $tesseractCandidates += (Join-Path $env:ProgramFiles 'Tesseract-OCR') }
+if (${env:ProgramFiles(x86)}) { $tesseractCandidates += (Join-Path ${env:ProgramFiles(x86)} 'Tesseract-OCR') }
+$ocrCommand = Get-Command tesseract.exe -ErrorAction SilentlyContinue
+if ($ocrCommand) { $tesseractCandidates += (Split-Path $ocrCommand.Source) }
+$tesseractDir = $tesseractCandidates | Where-Object {
+    (Test-Path (Join-Path $_ 'tesseract.exe')) -and
+    (Test-Path (Join-Path $_ 'tessdata/eng.traineddata'))
+} | Select-Object -First 1
+if (!$tesseractDir) {
+    Write-Host 'Instalando OCR somente na maquina de build...'
+    choco install tesseract --yes --no-progress --limit-output
+    if ($LASTEXITCODE -ne 0) { throw 'Falha ao instalar Tesseract na maquina de build' }
+    $tesseractDir = $tesseractCandidates | Where-Object {
+        (Test-Path (Join-Path $_ 'tesseract.exe')) -and
+        (Test-Path (Join-Path $_ 'tessdata/eng.traineddata'))
+    } | Select-Object -First 1
+}
+if (!$tesseractDir) { throw 'OCR incompleto: tesseract.exe ou eng.traineddata ausentes; instalador bloqueado' }
+$ocrData = "$tesseractDir;tesseract"
 
 foreach ($folder in @('release', 'release-build')) {
     if (Test-Path $folder) { Remove-Item $folder -Recurse -Force }
@@ -49,9 +74,14 @@ foreach ($folder in @('release', 'release-build')) {
 Remove-Item smoke-result.json, smoke-error.txt -ErrorAction SilentlyContinue
 
 Write-Host 'FASE 4/8: compilar PyInstaller'
-python -m PyInstaller --noconfirm --clean --windowed --name DS-Trader main.py
+python -m PyInstaller --noconfirm --clean --windowed --name DS-Trader --add-data 'ds_trader/assets/mercados_globais.html;ds_trader/assets' --add-data $ocrData --collect-submodules websockets --collect-submodules pytesseract main.py
 if ($LASTEXITCODE -ne 0) { throw 'PyInstaller falhou' }
 $exe = (Resolve-Path 'dist/DS-Trader/DS-Trader.exe').Path
+$ocrExe = (Resolve-Path 'dist/DS-Trader/_internal/tesseract/tesseract.exe').Path
+if (!(Test-Path 'dist/DS-Trader/_internal/tesseract/tessdata/eng.traineddata')) {
+    throw 'PyInstaller nao incluiu idioma ingles do OCR; instalador bloqueado'
+}
+Invoke-CheckedProcess -FilePath $ocrExe -Arguments @('--version') -TimeoutSeconds 30 -Description 'OCR embutido no aplicativo'
 Write-Host 'FASE 5/8: teste GUI do EXE com watchdog'
 Invoke-CheckedProcess -FilePath $exe -Arguments @('--smoke-test') -TimeoutSeconds 180 -Description 'Smoke teste GUI PyInstaller'
 if (!(Test-Path smoke-result.json)) {
