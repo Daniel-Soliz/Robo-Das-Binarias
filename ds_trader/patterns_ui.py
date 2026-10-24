@@ -114,9 +114,10 @@ class PatternsTab:
         self.reason = tk.StringVar(value="Inicie o Monitor para receber as leituras.")
         _label(bottom, variable=self.reason, size=9, color=TEXT, wraplength=1100,
                ).pack(anchor="w")
-        _label(bottom, "Pontuação técnica (%): aguardando barras OHLC confirmadas. "
-               "Não é possível calcular taxa de acerto pela captura de pixels.",
-               size=9, color=AMBER).pack(anchor="w", pady=(6, 0))
+        _label(bottom, "Placar heurístico de critérios visuais (não indica chance de acerto):",
+               size=9, color=AMBER).pack(anchor="w", pady=(6, 2))
+        _label(bottom, variable=self.monitor.confluence, color=TEXT,
+               size=10).pack(anchor="w")
         self._schedule()
 
     def _schedule(self):

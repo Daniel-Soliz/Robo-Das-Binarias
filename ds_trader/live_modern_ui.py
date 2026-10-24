@@ -19,6 +19,7 @@ from ds_trader.m1_cycle import M1Cycle
 from ds_trader.active_tracking import (ActiveAssetTracking, focus_identity,
                                        format_active_focus)
 from ds_trader.live_presentation import presentation_for, screen_region_is_obscured
+from ds_trader.technical_score import score_visual
 from ds_trader.theme import BG, PANEL, PANEL_2, TEXT, MUTED, ACCENT
 from ds_trader.window_capture import (WindowCaptureError, select_window_for_region,
                                       enumerate_windows, IqOptionDiscovery, WindowTarget)
@@ -102,6 +103,7 @@ class LiveScreenTab:
         self.visual_bias = tk.StringVar(value="SEM VANTAGEM CLARA")
         self.visual_reason = tk.StringVar(value="Aguardando gráfico.")
         self.quality_status = tk.StringVar(value="Sem dados")
+        self.confluence = tk.StringVar(value="AGUARDAR · pontuação não calculada")
         self.speed_status = tk.StringVar(value="MOTOR PRONTO  ·  SEM CAPTURA")
         self._picker = None
         self._auto_enabled = tk.BooleanVar(value=sys.platform == "win32")
@@ -238,6 +240,15 @@ class LiveScreenTab:
             "Leitura educacional · nenhuma ordem é enviada",
             size=8, color=MUTED, wraplength=310,
         ).pack(anchor="w", pady=(8, 0))
+
+        score_card = tk.Frame(right, bg=PANEL, highlightbackground=EDGE,
+                              highlightthickness=1, padx=16, pady=12)
+        score_card.pack(fill="x", pady=(0, 9))
+        _label(score_card, "ALINHAMENTO TÉCNICO · NÃO É CHANCE DE ACERTO",
+               color=CYAN, size=9, weight="bold").pack(anchor="w")
+        _label(score_card, "", textvariable=self.confluence,
+               color=TEXT, size=12, weight="bold",
+               wraplength=310).pack(anchor="w", pady=(8, 2))
 
         analysis_card = tk.Frame(right, bg=PANEL, highlightbackground=EDGE,
                                  highlightthickness=1, padx=16, pady=13)
@@ -526,6 +537,11 @@ class LiveScreenTab:
 
     def _present(self, result):
         self.latest_assessment = result  # Tk thread, usado apenas pela tela Padrões
+        score = score_visual(result)
+        self._set_if_changed(self.confluence,
+            (f"ALTA {score.alta}%  |  BAIXA {score.baixa}% · "
+             f"{score.factors} grupos de critérios" if score else
+             "AGUARDAR · critérios insuficientes ou sem ativo confirmado"))
         # Em captura WGC outras janelas na frente nao encobrem a origem.
         obscured = self.window_target is None and self._overlaps_selected_region()
         state = presentation_for(result, obscured=obscured)
@@ -578,6 +594,7 @@ class LiveScreenTab:
         )
 
     def _notify_stale(self):
+        self.confluence.set("AGUARDAR · captura atrasada")
         self.latest_assessment = None
         self._stale_notified = True
         self.preview_marker.configure(text="●  LEITURA ATRASADA", fg=AMBER)
@@ -639,6 +656,7 @@ class LiveScreenTab:
         self.after_id = self.root.after(120, self.poll)
 
     def stop(self, *, user_requested=True):
+        self.confluence.set("AGUARDAR · captura desligada")
         self.latest_assessment = None
         if user_requested:
             self._auto_paused = True
