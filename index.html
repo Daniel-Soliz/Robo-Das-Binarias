@@ -88,12 +88,11 @@
           <div class="info"><span>Windows 10 / 11</span><span>64 bits</span><span id="version">Versão disponível após aprovação</span></div>
         </div>
         <div class="download-area">
-          <a id="download" class="download-button" href="https://github.com/Daniel-Soliz/Robo-Das-Binarias/releases" rel="noopener">
+          <a id="download" class="download-button" aria-disabled="true" rel="noopener">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v12m0 0 4-4m-4 4-4-4M4 17v3h16v-3"/></svg>
             <span id="download-label">Conferir disponibilidade do instalador</span>
           </a>
           <div id="status" class="status" role="status" aria-live="polite">Verificando se o instalador Windows já está disponível...</div>
-          <a id="portable" class="secondary" href="#" rel="noopener" hidden>Baixar versão portátil (.zip)</a>
           <div><a id="integrity" class="secondary" href="#" rel="noopener" hidden>Verificar SHA-256 do instalador</a></div>
         </div>
       </section>
@@ -103,7 +102,7 @@
         <div class="step"><div class="step-number">02 / INSTALAÇÃO</div><h3>Siga o assistente</h3><p>Abra o arquivo e siga as instruções até concluir a instalação.</p></div>
         <div class="step"><div class="step-number">03 / PRONTO</div><h3>Abra o DS Trader</h3><p>Um atalho é criado na Área de Trabalho para abrir o programa sempre que quiser.</p></div>
       </section>
-      <p class="warning"><strong>Importante:</strong> o DS Trader é um aplicativo de estudo e simulação. Usa dados importados por CSV, não se conecta à IQ Option e não executa ordens reais. O instalador ainda não possui assinatura digital; não desative as proteções do Windows para executá-lo. Os resultados de exemplos sintéticos não demonstram rentabilidade.</p>
+      <p class="warning"><strong>Importante:</strong> o DS Trader é um aplicativo de estudo e simulação. Pode analisar a imagem visível da IQ Option, mas não se conecta à conta da corretora, não comprova a equivalência das cotações e não executa ordens reais. O instalador ainda não possui assinatura digital; não desative as proteções do Windows para executá-lo. Resultados sintéticos não demonstram rentabilidade.</p>
     </main>
     <footer>
       <span>© DS Trader · DS Digital</span>
@@ -116,7 +115,6 @@
       const download = document.getElementById('download');
       const label = document.getElementById('download-label');
       const status = document.getElementById('status');
-      const portable = document.getElementById('portable');
       const integrity = document.getElementById('integrity');
       function size(n) { return n ? ' (' + (n / 1048576).toFixed(1).replace('.', ',') + ' MB)' : ''; }
       try {
@@ -136,8 +134,6 @@
         label.textContent = 'Baixar instalador' + size(exe.size);
         status.textContent = 'Download disponível • arquivo .exe • instalação com atalho na Área de Trabalho';
         if (release.tag_name) document.getElementById('version').textContent = 'Versão ' + release.tag_name.replace(/^v/, '');
-        const zip = find('DS-Trader-Windows-x64.zip');
-        if (zip) { portable.href = zip.browser_download_url; portable.hidden = false; portable.textContent = 'Alternativa: versão portátil (.zip)' + size(zip.size); }
         const sha = find('DS-Trader-Setup.sha256.txt');
         if (sha) { integrity.href = sha.browser_download_url; integrity.hidden = false; }
       } catch (_error) {
