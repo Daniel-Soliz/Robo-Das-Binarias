@@ -16,6 +16,12 @@ def detect_numpy(hsv, candle_factory):
     visible = (saturation >= 92) & (value >= 78)
     up_mask = visible & (hue >= 51) & (hue <= 124)
     down_mask = visible & ((hue <= 11) | (hue >= 246))
+    # Linhas horizontais de suporte/resistencia da propria plataforma
+    # atravessam centenas de colunas. Sem removê-las, velas vermelhas
+    # adjacentes se tornam uma única faixa e desaparecem da detecção.
+    # O corte e relativo à largura, preservando pavios e corpos normais.
+    up_mask[np.count_nonzero(up_mask, axis=1) > width * .55, :] = False
+    down_mask[np.count_nonzero(down_mask, axis=1) > width * .55, :] = False
     # A contagem das colunas usa amostragem a cada 2 linhas, como o
     # detector Python. Nao calcular direcao com dados nao capturados.
     up = np.count_nonzero(up_mask[4:height - 4:2], axis=0)

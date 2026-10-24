@@ -24,10 +24,12 @@ jobs:
           architecture: x64
       - name: Instalar bibliotecas de leitura local (ambos sistemas)
         run: python -m pip install -r requirements-runtime.txt
+      - name: Instalar executor de testes
+        run: python -m pip install -r requirements-test.txt
       - name: Conferir sintaxe dos modulos e interface
         run: python -m compileall -q ds_trader scripts tests_ds
       - name: Executar todos os testes do aplicativo
-        run: python -m unittest discover -s tests_ds -v
+        run: python -m pytest -q -rs
   windows:
     needs: core
     runs-on: windows-2022
@@ -94,7 +96,7 @@ jobs:
           test -n "$GH_TOKEN" || { echo "::error::GITHUB_TOKEN nao disponivel"; exit 1; }
           gh --version
           echo "Repositorio: $GH_REPO"
-          tag="v1.8.0-build-${GITHUB_SHA:0:8}"
+          tag="v1.9.0-build-${GITHUB_SHA:0:8}"
           files=(
             release-ready/DS-Trader-Setup.exe
             release-ready/DS-Trader-Setup.sha256.txt
@@ -107,9 +109,9 @@ jobs:
           else
             gh release create "$tag" "${files[@]}" \
               --target "$GITHUB_SHA" \
-              --title "DS Trader 1.8.0 - Windows x64" \
+              --title "DS Trader 1.9.0 - Windows x64" \
               --latest \
-              --notes "DS Trader 1.8: abre diretamente no Monitor, menu compacto com apenas Monitor/Mercado/Simulador, detalhes tecnicos recolhidos, menos atualizacoes pesadas da previa, demais funcoes preservadas. Script opcional para instalar 11 habilidades day-trader-skill no Claude Code do projeto (nao no aplicativo). Ciclo M1 somente com dados verificaveis; pixels da IQ Option mantem AGUARDAR e nao fornecem cotacao, abertura ou vencimento validados. Sem ordens reais. Instalador Windows e ZIP portatil; sem assinatura digital: nao desative protecoes do Windows."
+              --notes "DS Trader 1.9: interface redesenhada com navegacao superior, grafico maior e cenario visual da proxima vela em destaque. Detector filtra linhas horizontais, mostra suporte/resistencia ou extremos visuais, LTA/LTB e motivos. Captura desacoplada com medicao de tempo/idade do quadro; sem promessas de latencia. Modelo direcional heuristico, nao IA treinada nem probabilidade calibrada. Pixels da IQ Option mantem AGUARDAR na ausencia de tempo/precos verificados. Sem ordens reais. Instalador Windows e ZIP portatil; sem assinatura digital."
           fi
           gh release view "$tag" --json url,assets --jq '.url, (.assets[].name)'
       - name: Diagnostico de falha na publicacao

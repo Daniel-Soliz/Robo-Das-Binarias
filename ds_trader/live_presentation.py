@@ -13,6 +13,8 @@ class LivePanelState:
     structure: str
     detail: str
     detected_label: str
+    outlook: str = "SEM VANTAGEM CLARA"
+    outlook_reason: str = "Aguardando leitura visual."
 
 
 def presentation_for(result, *, obscured: bool = False) -> LivePanelState:
@@ -38,13 +40,32 @@ def presentation_for(result, *, obscured: bool = False) -> LivePanelState:
             "Ainda não reconhecidos", "Ainda não identificadas",
             result.explanation, detected
         )
+    if result.identity_required and not result.identity_confirmed:
+        return LivePanelState(
+            "AGUARDAR", "warning", "ATIVO NÃO CONFIRMADO",
+            "Aguardando leitura consistente do nome do ativo e período.",
+            "Ainda não verificáveis", "Ainda não verificáveis",
+            result.identity_reason + " Nenhuma hipótese anterior é reaproveitada.",
+            detected,
+        )
+    outlook = {
+        "ALTA": "ALTA FAVORECIDA",
+        "BAIXA": "BAIXA FAVORECIDA",
+    }.get(result.next_visual_bias, "SEM VANTAGEM CLARA")
+    focus = (result.visual_reasons[-2:] if result.next_visual_bias == "INDEFINIDO"
+             else result.visual_reasons[:3])
+    reasons = "; ".join(focus) or "Sem confluências visuais identificadas."
     if not result.temporal_verified:
+        trend = (f"Viés visual: {result.trend_visual}. "
+                 if result.trend_visual in ("ALTA", "BAIXA") else "")
         return LivePanelState(
             "AGUARDAR", "warning", "FECHAMENTO / RELOGIO NAO VERIFICADOS",
-            "Estruturas visuais apenas; sem referencia temporal de entrada M1.",
+            trend + "Sem confirmação temporal para entrada.",
             ", ".join(result.patterns) if result.patterns else "Nenhum padrao comprovado",
-            ", ".join(result.structures) if result.structures else "Sem estruturas reconhecidas",
-            result.explanation, detected,
+            ("Tendência visual: " + result.trend_visual + ". "
+             if result.trend_visual in ("ALTA", "BAIXA") else "") +
+            (", ".join(result.structures) if result.structures else "Sem estruturas reconhecidas"),
+            result.explanation, detected, outlook, reasons,
         )
     side = result.bias if result.bias in ("CALL", "PUT") else "AGUARDAR"
     subtitle = "HIPÓTESE VISUAL EXPERIMENTAL" if side != "AGUARDAR" else "SEM CONFLUÊNCIA CONFIÁVEL"
@@ -53,7 +74,7 @@ def presentation_for(result, *, obscured: bool = False) -> LivePanelState:
         subtitle, result.movement,
         ", ".join(result.patterns) if result.patterns else "Nenhum padrão confirmado",
         ", ".join(result.structures) if result.structures else "Sem estruturas confirmadas",
-        result.explanation, detected
+        result.explanation, detected, outlook, reasons,
     )
 
 

@@ -1,0 +1,108 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="dark">
+  <title>DS Trader | Mercados globais</title>
+  <style>
+    :root { color-scheme: dark; --bg:#080d13; --card:#111a25; --line:#263343;
+            --muted:#9faec1; --text:#f5f8fc; --accent:#78dfd3; }
+    * { box-sizing: border-box; }
+    body { margin: 0; min-height: 100vh; font: 15px/1.5 system-ui,-apple-system,"Segoe UI",sans-serif;
+           color:var(--text); background:radial-gradient(ellipse at 80% 0,#17293a 0,transparent 49%),var(--bg); }
+    .wrap { max-width: 1230px; margin: 0 auto; padding: 30px clamp(16px,3vw,38px) 55px; }
+    .top { display:flex; flex-wrap:wrap; align-items:center; justify-content:space-between; gap:16px; }
+    .brand { font-size:13px; font-weight:800; letter-spacing:.12em; display:flex; align-items:center; gap:10px; }
+    .mark { display:inline-grid; place-items:center; border-radius:11px; width:40px; height:40px;
+            color:#072220; background:var(--accent); letter-spacing:-.08em; font-size:16px; }
+    .tag { color:var(--accent); padding:6px 12px; border-radius:100px; background:#173a3b; font-size:12px; }
+    h1 { font-size:clamp(28px,4vw,46px); line-height:1.12; letter-spacing:-.045em;
+         margin:36px 0 12px; font-weight:740; }
+    .lead { color:var(--muted); max-width:760px; margin:0 0 25px; }
+    .notes { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:13px; margin-bottom:22px; }
+    .note { background:linear-gradient(145deg,#172231,#111923); border:1px solid var(--line);
+            border-radius:15px; padding:16px 17px; }
+    .note b { display:block; margin-bottom:3px; font-size:13px; }
+    .note p { color:var(--muted); font-size:12px; margin:0; }
+    .warning { color:#f4ca91; }
+    .board { border-radius:18px; padding:17px; border:1px solid #2e3a47; background:#0c151f;
+             box-shadow:0 24px 65px #0005; }
+    .sectionhead { display:flex; flex-wrap:wrap; align-items:center; justify-content:space-between;
+                   margin:0 0 13px; gap:10px; }
+    h2 { font-size:15px; margin:0; letter-spacing:.01em; }
+    .source { color:var(--muted); font-size:12px; }
+    .tradingview-widget-container { min-height:620px; width:100%; }
+    .tradingview-widget-container__widget { width:100%; min-height:600px; }
+    .tradingview-widget-copyright { text-align:right; color:var(--muted); font-size:12px; padding:6px 8px 0; }
+    a { color:var(--accent); }
+    footer { color:var(--muted); font-size:12px; margin-top:20px; }
+    @media (max-width:740px) { .notes { grid-template-columns:1fr; }
+      .wrap { padding-top:18px; } .board { padding:8px; } .tradingview-widget-container { min-height:510px; } }
+  </style>
+</head>
+<body>
+  <main class="wrap">
+    <div class="top"><div class="brand"><span class="mark">DS</span> DS TRADER <span class="source">/ MARKET INTELLIGENCE</span></div>
+      <span class="tag">Painel de consulta · sem login</span></div>
+    <h1>Mercados globais<span style="color:var(--accent)">.</span></h1>
+    <p class="lead">Acompanhe referências de B3, moedas e criptoativos num só lugar. Os gráficos são fornecidos diretamente pelo TradingView. A leitura de candles do DS Trader usa fontes separadas e verificáveis.</p>
+    <div class="notes">
+      <section class="note"><b>B3 · Brasil</b><p class="warning">Dados gratuitos da B3 com atraso de 15 minutos. Não usar como cotação ao vivo M1.</p></section>
+      <section class="note"><b>Forex · pares de moedas</b><p>Visão do TradingView. A disponibilidade e a atualização dependem da fonte exibida.</p></section>
+      <section class="note"><b>Criptomoedas · Spot</b><p>Widget de mercado independente dos candles Binance /USDT processados pelo Radar.</p></section>
+    </div>
+    <section class="board" aria-label="Widget oficial de mercados">
+      <div class="sectionhead"><h2>Visão dos mercados</h2><span class="source">Selecione a aba Brasil, Forex ou Cripto no gráfico</span></div>
+      <!-- Widget oficial do TradingView. Nenhum dado é extraído deste script. -->
+      <div class="tradingview-widget-container">
+        <div class="tradingview-widget-container__widget"></div>
+        <div class="tradingview-widget-copyright">
+          <a href="https://www.tradingview.com/markets/" target="_blank" rel="noopener nofollow">Gráficos e cotações</a> por TradingView
+        </div>
+        <script type="text/javascript" src="https://s3.tradingview.com/external-embedding/embed-widget-market-overview.js" async>
+        {
+          "colorTheme": "dark",
+          "dateRange": "1D",
+          "locale": "br",
+          "largeChartUrl": "",
+          "isTransparent": true,
+          "showFloatingTooltip": true,
+          "plotLineColorGrowing": "rgba(72, 196, 174, 1)",
+          "plotLineColorFalling": "rgba(239, 116, 124, 1)",
+          "gridLineColor": "rgba(42, 57, 74, .4)",
+          "scaleFontColor": "#aabace",
+          "belowLineFillColorGrowing": "rgba(72, 196, 174, .1)",
+          "belowLineFillColorFalling": "rgba(239, 116, 124, .1)",
+          "belowLineFillColorGrowingBottom": "rgba(72, 196, 174, 0)",
+          "belowLineFillColorFallingBottom": "rgba(239, 116, 124, 0)",
+          "symbolActiveColor": "rgba(72, 196, 174, .14)",
+          "tabs": [
+            {"title":"B3 · Brasil","originalTitle":"Brasil","symbols":[
+              {"s":"BMFBOVESPA:IBOV","d":"Ibovespa"},
+              {"s":"BMFBOVESPA:PETR4","d":"Petrobras PN"},
+              {"s":"BMFBOVESPA:VALE3","d":"Vale ON"},
+              {"s":"BMFBOVESPA:ITUB4","d":"Itaú PN"}
+            ]},
+            {"title":"Forex","originalTitle":"Forex","symbols":[
+              {"s":"FX:EURUSD","d":"EUR / USD"},
+              {"s":"FX:GBPUSD","d":"GBP / USD"},
+              {"s":"FX:USDJPY","d":"USD / JPY"},
+              {"s":"FX:AUDUSD","d":"AUD / USD"}
+            ]},
+            {"title":"Cripto Spot","originalTitle":"Crypto","symbols":[
+              {"s":"BINANCE:BTCUSDT","d":"BTC / USDT"},
+              {"s":"BINANCE:ETHUSDT","d":"ETH / USDT"},
+              {"s":"BINANCE:SOLUSDT","d":"SOL / USDT"},
+              {"s":"KRAKEN:XBTUSD","d":"BTC / USD (Kraken)"}
+            ]}
+          ],
+          "width":"100%", "height":"620", "showSymbolLogo":true, "showChart":true
+        }
+        </script>
+      </div>
+    </section>
+    <footer>Fonte: TradingView. Este painel é exclusivamente informativo e não gera sinais de negociação, probabilidades ou ordens. Os horários e a disponibilidade são definidos pelos fornecedores.</footer>
+  </main>
+</body>
+</html>

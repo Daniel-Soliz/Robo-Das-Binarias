@@ -1,4 +1,141 @@
-# Relatório de testes — 19/10/2026
+# Relatório de testes — 24/10/2026
+
+## Modo Automático por Ativo M5 — 24/10/2026
+
+Adicionado motor puro `active_history` para estudar até 288 candles M5
+fechados (24h), exigindo pelo menos 12h contínuas e bloqueando fonte
+atrasada, futuro, lacunas e OHLC inconsistente. Cenários técnicos externos
+apresentam confluências e fonte; **operação na IQ Option continua AGUARDAR**.
+Ampliados de forma opcional os históricos REST de Binance, Kraken e Twelve
+Data sem alterar limites do Radar anterior. `active_source` preserva
+identidade exata do par, sem trocar USD por USDT ou inverter moeda.
+
+`active_tracking` segue o par confirmado pelo OCR do Monitor em uma thread
+separada; invalida estado em troca/OTC/perda de cabeçalho e descarta resposta
+HTTP antiga por geração. Aplica validade local do fechamento mesmo entre
+consultas. A chave Twelve Data entra só em memória, pela aba Radar.
+
+**Verificação de 24/10/2026 nesta versão:** `pytest -q -rs` retornou
+**216 aprovados, 1 ignorado** (recurso Windows `EnumWindows` indisponível
+no Linux), em **3,01 s**. `compileall` e `git diff --check` saíram sem erro.
+Os testes incluem competição entre troca de ativo e resposta atrasada,
+invalidação ao expirar o candle, cabeçalhos consecutivos de frames reais
+do pipeline em memória, incompatibilidade do período, e inclusão do módulo
+`pytesseract` no ambiente empacotado.
+
+Revisão independente identificou e foi corrigida uma aceitação indevida de
+chave Kraken de ativo diferente (agora só aceita aliases explícitos), a
+troca do seletor para M1/M15 mantendo cenário M5 (agora invalida) e a
+esteira Windows usando `unittest discover` que não executava os testes
+pytest (agora instala `requirements-test.txt` e roda a suíte completa).
+O modo histórico puro também rejeita período diferente de M5.
+
+**Teste real pontual (sem conta, sem ordens):** HTTPS Binance retornou
+`BTC/USDT`, 288 candles M5 fechados, horizonte **24h**, idade **95s** e
+status `ATUALIZADO`. O analisador retornou `AGUARDAR` no cenário histórico
+observado e `AGUARDAR` operacional, sem inventar entrada.
+Em execução adicional do `ActiveAssetTracking` com uma thread real e sem
+API key, a fonte confirmou 288 candles fechados de BTC/USDT e o motor
+publicou `AGUARDAR` (cenário) / `AGUARDAR` (operacional). Um teste OCR
+com cabeçalho **sintético** `USD/JPY M5` passou pelo Tesseract local,
+retornando o texto correto; **não é uma captura da IQ Option real**.
+
+`scripts/gui_smoke.py` tentou iniciar o Tkinter mas recebeu
+`TclError: no display name and no $DISPLAY environment variable` neste
+Linux. Não há validação da interface gráfica nesta plataforma.
+
+**Pendente:** reconhecimento OCR da IQ Option real, instalação de Tesseract
+no Windows, validação do layout M5, sincronização corretora/fonte,
+qualidade estatística de alertas, interface Tk e compilação de instalador
+com esta versão. Forex sem chave não foi testado online e permanece sem fonte.
+
+## Mercados públicos, Binance + TradingView — 24/10/2026
+
+Implementados nesta branch: parser REST Binance Spot com 120 candles fechados
+e validação estrita de `x=true`, ordem, intervalo, ativo e tempo UTC; worker
+WebSocket público com fila limitada, erro explícito ao desconectar e reconexão;
+integração do Radar com USD Kraken e USDT Binance sem equiparar moedas; e
+painel HTML com widget oficial TradingView, B3/Forex/cripto e aviso B3 de
+**15 minutos de atraso**. O botão abre um arquivo do próprio aplicativo no
+navegador, não retorna candles do widget ao motor de sinais.
+
+**Testes automatizados finais:** `.venv/bin/python -m pytest -q -rs` —
+**192 aprovados, 1 ignorado** (integração `EnumWindows` exclusiva Windows),
+em **2,82 s** neste host. `compileall` e `git diff --check` passaram.
+O `gui_smoke.py` foi atualizado para verificar seis favoritos, o botão e
+o asset empacotado, mas **não pôde executar neste Linux sem display**.
+
+**Verificação real das fontes externas, 24/10/2026 (apenas pontual):**
+`fetch_binance_history(BTC/USDT,1min)` consultou com êxito o endpoint
+`data-api.binance.vision` por HTTPS, sem chave, retornando **120 candles
+fechados**, último fechamento `2026-10-24T03:19:00Z`, idade 48 s e status
+`ATUALIZADO` no instante da consulta. Uma conexão real ao endereço público
+`wss://data-stream.binance.vision:443/stream?streams=btcusdt@kline_1m`
+recebeu uma mensagem `BTCUSDT` com `k.x=true` (candle fechado). Esses
+testes **não provam** funcionamento contínuo, disponibilidade da Binance no
+computador do usuário, qualidade preditiva nem sincronização com IQ Option.
+
+**Ainda pendente:** teste de 30 minutos do worker conectado, interação com
+o painel TradingView num navegador Windows, smoke da GUI e build do instalador
+com WebSocket e asset empacotado. A conexão da B3 é só visual e atrasada.
+
+## Extensao sem chave e descoberta IQ Option — 24/10/2026
+
+Incluidos testes de descoberta automatica segura de uma unica janela IQ
+Option (duas observacoes, exclusao do proprio app, multiplos monitores,
+ambiguidade, dimensoes), integracao com o evento de abertura na UI, Kraken
+publico M1 com recusa de candle aberto e OHLC inconsistente, limite de 721
+entradas (720 fechadas + atual), erros do fornecedor e radar sem credencial.
+
+`python -m pytest -q -rs`: **171 aprovados, 1 ignorado** (API `EnumWindows`
+exclusiva Windows) em **2,67 s**. `compileall` e `git diff --check` sem erro.
+
+**Verificacao publica real:** consulta HTTPS sem autenticacao ao endpoint
+`https://api.kraken.com/0/public/OHLC?pair=XBTUSD&interval=1` retornou
+`error: []` e **721** entradas em 24/10/2026. O primeiro teste revelou um
+limite de tamanho incorreto no parser (720); um teste de regressao o
+reproduziu e foi corrigido. Consulta subsequente passou pelo proprio modulo
+`fetch_public_crypto_candles` e devolveu **120 candles fechados**, fonte
+"Kraken Spot publico", status `ATUALIZADO`, idade **4 segundos** no momento
+do teste. O vies descritivo observado foi `ALTA`, mas nao e sinal nem prova
+de eficacia preditiva. Sem custos, conta ou login. Esta validacao nao cobre
+disponibilidade futura, Forex/B3, feed IQ Option ou tempo de tela.
+
+**Ainda nao testado:** auto descoberta e recorte de janelas IQ Option
+reais, reconexao grafica Windows 10/11, instalador atualizado, WebSocket
+streaming e licenciamento de dados B3. A cobertura de Forex M1/M5/M15
+exige fonte intradiaria apropriada e permanece sem cotacao na opcao publica.
+
+
+## Etapa híbrida local — 23/10/2026 (branch `feature/ds-trader-hybrid`)
+
+**Executado neste ambiente Linux:** `python -m pytest -q -rs` — **159 aprovados,
+1 ignorado** (`EnumWindows` específico do Windows) em 2,67 s. `python -m
+compileall -q ds_trader scripts tests_ds main.py` — sem erro. Os testes
+abrangem agora identidade de ativo, troca com invalidação imediata,
+quadros fora de ordem, rejeição de frames de mais de 2,5 s, classificação
+Forex/cripto, candles fechados, HTTP/JSON 429 com pausa global do provedor,
+erro de fonte, scanner parcial, cancelamento da consulta, remoção de
+favoritos antigos e envelhecimento de uma análise no radar.
+
+Benchmark de **processamento visual isolado** no arquivo de imagem gravada
+`upload/01-110.jpg`, recorte `(100,90)-(1300,635)`, 100 repetições:
+mediana **11,24 ms** e P95 **15,02 ms**; 31 corpos reconhecidos,
+`visual_bias=INDEFINIDO`, `trading_signal=false`. Comparação histórica
+anterior neste ambiente: mediana 11,08 ms e P95 16,18 ms. Variação
+não comprova ganho de performance; o OCR e a rede não entram nesse benchmark.
+
+`python scripts/gui_smoke.py` **não executou teste de interface** porque
+`tk.Tk()` encontrou `TclError: no display name and no $DISPLAY environment
+variable`. Trata-se de restrição deste host Linux; não se pode afirmar que
+os novos controles Tk ou o instalador já foram testados no Windows.
+
+**Ainda pendente:** OCR realmente reconhecendo pares na janela da IQ Option,
+instalação/configuração do mecanismo OCR no Windows, feeds reais Twelve Data
+com chave e plano do usuário, teste de limites/cobertura, duração e memória
+durante 30 minutos, smoke do executável Windows e lançamento de release.
+Até isso ocorrer, nenhuma hipótese por pixels será tratada como candle
+comprovadamente fechado, operação, probabilidade de acerto ou lucro.
 
 ## Atualizacao — 22/10/2026 (captura de janela fixada, versao 1.4)
 

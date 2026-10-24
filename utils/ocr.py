@@ -41,6 +41,9 @@ def identificar_cabecalho(texto: str) -> tuple[str | None, str | None, bool]:
 def extrair_texto(imagem_bgr: np.ndarray) -> str:
     """Executa OCR local; lança erro se Tesseract não estiver configurado."""
     import pytesseract
+    from ds_trader.ocr_runtime import configure_tesseract
+
+    configure_tesseract(pytesseract)
 
     cinza = cv2.cvtColor(imagem_bgr, cv2.COLOR_BGR2GRAY)
     ampliada = cv2.resize(cinza, None, fx=2, fy=2, interpolation=cv2.INTER_CUBIC)

@@ -1,6 +1,7 @@
 """Testes deterministas da leitura visual sem permissao para capturar tela real."""
 import unittest
 import sys
+import time
 from types import SimpleNamespace
 from unittest.mock import patch
 from PIL import Image, ImageDraw
@@ -39,6 +40,15 @@ class ScreenGeometryTests(unittest.TestCase):
 
 
 class ScreenAnalysisTests(unittest.TestCase):
+    def test_processing_latency_is_measured_per_frame(self):
+        image = sample(upward=True, count=36, gap=20)
+        monitor = ScreenMonitor(Region(0, 0, 750, 330), interval_seconds=.55)
+        monitor._process_frame(image, captured_at_mono=time.monotonic() - .06)
+        result, _preview = monitor.results.get_nowait()
+        self.assertGreater(result.analysis_ms, 0)
+        self.assertGreaterEqual(result.capture_age_ms, 60)
+        self.assertEqual(result.bias, "AGUARDAR")
+
     def test_white_or_blank_is_never_a_signal(self):
         result = assess(Image.new("RGB", (500, 350), "#101723"))
         self.assertEqual(result.completed_estimate, 0)
@@ -73,6 +83,35 @@ class ScreenAnalysisTests(unittest.TestCase):
         self.assertFalse(result.is_market_quote)
         self.assertIn("NAO e sinal validado",result.explanation)
 
+    def test_horizontal_platform_levels_do_not_merge_candles(self):
+        image = sample(upward=True, count=36, gap=20)
+        canvas = ImageDraw.Draw(image)
+        # Linha de resistência vermelha atravessando TODA a área de candles.
+        canvas.rectangle((0, 175, 749, 177), fill="#d94136")
+        result = assess(image)
+        self.assertGreaterEqual(result.detected, 30)
+        self.assertTrue(result.valid_roi)
+        self.assertEqual(result.bias, "AGUARDAR")
+
+    def test_level_line_filter_matches_without_numpy_accelerator(self):
+        image = sample(upward=True, count=36, gap=20)
+        ImageDraw.Draw(image).rectangle((0, 175, 749, 177), fill="#d94136")
+        fast = detect_visual_candles(image)
+        with patch("ds_trader.visual_fast.detect_numpy", side_effect=ImportError):
+            fallback = detect_visual_candles(image)
+        self.assertEqual(len(fast), len(fallback))
+        self.assertGreaterEqual(len(fallback), 30)
+
+    def test_support_and_resistance_marks_are_relative_only(self):
+        image=sample(upward=True,count=36,gap=20)
+        result=assess(image)
+        artificial=replace(result, support_rel=.25, resistance_rel=.75)
+        preview=annotate_preview(image,artificial)
+        self.assertEqual(preview.getpixel((300,round(.75*image.height))), (68,212,176))
+        self.assertEqual(preview.getpixel((300,round(.25*image.height))), (247,179,84))
+        self.assertNotEqual(preview.tobytes(),image.tobytes())
+        self.assertIsNone(result.support_rel)
+
     def test_lta_and_ltb_overlay_are_only_drawn_on_preview_copy(self):
         image=sample(upward=True,count=36,gap=20)
         result=assess(image)
@@ -81,7 +120,9 @@ class ScreenAnalysisTests(unittest.TestCase):
         preview=annotate_preview(image,artificial)
         self.assertIsNot(image,preview)
         self.assertNotEqual(preview.tobytes(),image.tobytes())
-        no_overlay=replace(result,lta=None,ltb=None)
+        no_overlay=replace(result,lta=None,ltb=None, support_rel=None,
+                           resistance_rel=None,recent_top_rel=None,
+                           recent_bottom_rel=None)
         self.assertEqual(annotate_preview(image,no_overlay).tobytes(),image.tobytes())
 
     def test_wrong_roi_rejects_sparse_buttons(self):

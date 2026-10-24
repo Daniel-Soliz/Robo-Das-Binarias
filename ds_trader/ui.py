@@ -11,9 +11,10 @@ from ds_trader.simulation import Settings, Replay
 from ds_trader.storage import Store, export_report
 from ds_trader.explain import explain
 from ds_trader.live_modern_ui import LiveScreenTab
-from ds_trader.theme import apply_theme
+from ds_trader.theme import apply_theme, BG, PANEL, TEXT, MUTED, ACCENT
 from ds_trader.forex_dashboard import ForexDashboard as ForexMarketTab
 from ds_trader.dashboard_shell import DashboardShell, label as dashboard_label
+from ds_trader.market_radar_ui import RadarTab
 
 LABELS={
 'left':'Candles à esquerda do pivô','right':'Candles à direita (confirmação)',
@@ -43,6 +44,7 @@ class App:
         self.overview_tab=ttk.Frame(self.book)
         self.chart_tab=ttk.Frame(self.book)
         self.forex_tab=ttk.Frame(self.book)
+        self.radar_tab=ttk.Frame(self.book)
         self.live_tab=ttk.Frame(self.book)
         self.events_tab=ttk.Frame(self.book)
         self.report_tab=ttk.Frame(self.book)
@@ -52,6 +54,7 @@ class App:
             ('overview',self.overview_tab,'Visão geral'),
             ('chart',self.chart_tab,'Gráfico e reprodução'),
             ('forex',self.forex_tab,'Forex em tempo real'),
+            ('radar',self.radar_tab,'Radar Forex e cripto'),
             ('live',self.live_tab,'Tela ao vivo'),
             ('events',self.events_tab,'Sinais e histórico'),
             ('reports',self.report_tab,'Resultados'),
@@ -84,7 +87,11 @@ class App:
         self.canvas.bind('<Configure>',lambda e:self.draw())
         self.forex_view=ForexMarketTab(self.forex_tab,self.root)
         self.screen_view=LiveScreenTab(self.live_tab,self.root)
+        self.radar_view=RadarTab(self.radar_tab,self.root,
+                                 on_update=self.screen_view.update_radar_preview)
+        self.screen_view.set_market_key_supplier(lambda:self.radar_view.key.get())
         self.forex_view.status.trace_add('write',lambda *_:self._refresh_footer())
+        self.radar_view.status.trace_add('write',lambda *_:self._refresh_footer())
         self.screen_view.status.trace_add('write',lambda *_:self._refresh_footer())
         self.book.bind('<<NotebookTabChanged>>',
                        lambda _evt:self.root.after_idle(self._refresh_footer),add='+')
@@ -92,11 +99,11 @@ class App:
         self.tree=ttk.Treeview(self.events_tab,columns=('time','asset','phase','status','direction'),show='headings',height=12)
         for key,label in [('time','Horário UTC'),('asset','Ativo'),('phase','Período'),('status','Evento'),('direction','Direção')]:self.tree.heading(key,text=label)
         self.tree.pack(fill='both',expand=True);self.tree.bind('<<TreeviewSelect>>',self.show_event)
-        self.detail=tk.Text(self.events_tab,height=8,wrap='word',bg='#101c2d',fg='#e9f3ff',insertbackground='#e9f3ff',relief='flat',font=('Segoe UI',10));self.detail.pack(fill='x')
+        self.detail=tk.Text(self.events_tab,height=8,wrap='word',bg=PANEL,fg=TEXT,insertbackground=TEXT,relief='flat',font=('Segoe UI',10));self.detail.pack(fill='x')
         hist=ttk.Frame(self.report_tab);hist.pack(fill='x')
         self.saved=ttk.Combobox(hist,state='readonly',width=55);self.saved.pack(side='left')
         ttk.Button(hist,text='Abrir histórico salvo',command=lambda:self.guard(self.load_saved)).pack(side='left')
-        self.result=tk.Text(self.report_tab,wrap='word',font=('Consolas',11),bg='#101c2d',fg='#e9f3ff',insertbackground='#e9f3ff',relief='flat');self.result.pack(fill='both',expand=True)
+        self.result=tk.Text(self.report_tab,wrap='word',font=('Consolas',11),bg=PANEL,fg=TEXT,insertbackground=TEXT,relief='flat');self.result.pack(fill='both',expand=True)
         self.vars={};config=self.store.config()
         for i,(name,default) in enumerate({**asdict(Parameters()),**asdict(Settings())}.items()):
             ttk.Label(self.config_tab,text=LABELS[name]).grid(row=i,column=0,sticky='w',padx=12)
@@ -106,16 +113,16 @@ class App:
             widget.grid(row=i,column=1,padx=15,pady=2)
         ttk.Label(self.config_tab,text='Hipóteses de teste. Ajuste a largura à escala do ativo.\nMudanças valem somente para a próxima reprodução.\nO período de teste deve ficar reservado; não há otimização automática.',foreground='#ffcb76').grid(row=0,column=2,rowspan=6,padx=10,sticky='nw')
         ttk.Button(self.config_tab,text='Salvar configurações',command=lambda:self.guard(self.save_config)).grid(row=16,column=1,pady=8)
-        helptext=tk.Text(self.help_tab,wrap='word',bg='#101c2d',fg='#e9f3ff',insertbackground='#e9f3ff',relief='flat',font=('Segoe UI',10));helptext.pack(fill='both',expand=True);helptext.insert('1.0',HELP+'\nBanco: '+str(self.store.path));helptext.configure(state='disabled')
+        helptext=tk.Text(self.help_tab,wrap='word',bg=PANEL,fg=TEXT,insertbackground=TEXT,relief='flat',font=('Segoe UI',10));helptext.pack(fill='both',expand=True);helptext.insert('1.0',HELP+'\nBanco: '+str(self.store.path));helptext.configure(state='disabled')
         self.refresh_saved();root.protocol('WM_DELETE_WINDOW',self.close)
 
     def _build_overview(self):
-        body=tk.Frame(self.overview_tab,bg='#08111f',padx=27,pady=23)
+        body=tk.Frame(self.overview_tab,bg=BG,padx=27,pady=23)
         body.pack(fill='both',expand=True)
         dashboard_label(body,'VISÃO GERAL',size=21,bold=True).pack(anchor='w')
         dashboard_label(body,'Seu espaço de análise, simulação e monitoramento visual.',
                         color='#90aecb',size=11).pack(anchor='w',pady=(6,20))
-        cols=tk.Frame(body,bg='#08111f')
+        cols=tk.Frame(body,bg=BG)
         cols.pack(fill='x')
         cards=[
             ('◎','Forex por API',
@@ -129,7 +136,7 @@ class App:
              'chart'),
         ]
         for j,(glyph,title,description,destination) in enumerate(cards):
-            item=tk.Frame(cols,bg='#101c2d',highlightbackground='#25435d',
+            item=tk.Frame(cols,bg=PANEL,highlightbackground='#2b3948',
                           highlightthickness=1,padx=17,pady=17)
             item.grid(row=0,column=j,sticky='nsew',padx=(0,12))
             cols.grid_columnconfigure(j,weight=1)
@@ -159,6 +166,8 @@ class App:
         if selected==str(self.forex_tab):
             status=self.forex_view.status.get()
             self.shell.connection.set('●  '+status[:75])
+        elif selected==str(self.radar_tab):
+            self.shell.connection.set('●  '+self.radar_view.status.get()[:75])
         elif selected==str(self.live_tab):
             status=self.screen_view.status.get()
             self.shell.connection.set('●  '+status[:75])
@@ -295,6 +304,7 @@ class App:
         path=filedialog.asksaveasfilename(defaultextension='.sqlite3',initialfile='ds-trader-backup.sqlite3')
         if path:self.store.backup(path)
     def close(self):
+        self.radar_view.shutdown()
         self.forex_view.shutdown()
         self.screen_view.shutdown()
         self.stop();self.store.close();self.root.destroy()
@@ -308,4 +318,4 @@ def main():
             ctypes.windll.shcore.SetProcessDpiAwareness(2)
         except (AttributeError, OSError):
             pass
-    root=tk.Tk();app=App(root);app.book.select(app.forex_tab);root.mainloop()
+    root=tk.Tk();app=App(root);root.mainloop()
