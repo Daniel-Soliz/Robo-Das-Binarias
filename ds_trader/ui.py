@@ -101,6 +101,9 @@ class App:
         self.book.bind('<<NotebookTabChanged>>',
                        lambda _evt:self.root.after_idle(self._refresh_footer),add='+')
         ttk.Label(self.chart_tab,text='Últimos 90 candles já revelados • horários UTC • regiões azuis • preços sem interpolação').pack()
+        ttk.Label(self.events_tab, text='HISTÓRICO DE ANÁLISES E SIMULAÇÕES',
+                  font=('Segoe UI',17,'bold'),foreground=ACCENT).pack(anchor='w',padx=15,pady=(12,6))
+        ttk.Label(self.events_tab, text='Eventos reais do motor local de reprodução. Sem histórico de sinais IQ Option confirmado.').pack(anchor='w',padx=15,pady=(0,8))
         self.tree=ttk.Treeview(self.events_tab,columns=('time','asset','phase','status','direction'),show='headings',height=12)
         for key,label in [('time','Horário UTC'),('asset','Ativo'),('phase','Período'),('status','Evento'),('direction','Direção')]:self.tree.heading(key,text=label)
         self.tree.pack(fill='both',expand=True);self.tree.bind('<<TreeviewSelect>>',self.show_event)
@@ -109,15 +112,12 @@ class App:
         self.saved=ttk.Combobox(hist,state='readonly',width=55);self.saved.pack(side='left')
         ttk.Button(hist,text='Abrir histórico salvo',command=lambda:self.guard(self.load_saved)).pack(side='left')
         self.result=tk.Text(self.report_tab,wrap='word',font=('Consolas',11),bg=PANEL,fg=TEXT,insertbackground=TEXT,relief='flat');self.result.pack(fill='both',expand=True)
-        self.vars={};config=self.store.config()
-        for i,(name,default) in enumerate({**asdict(Parameters()),**asdict(Settings())}.items()):
-            ttk.Label(self.config_tab,text=LABELS[name]).grid(row=i,column=0,sticky='w',padx=12)
-            var=tk.StringVar(value=str(config.get(name,default)));self.vars[name]=var
-            if name=='tie': widget=ttk.Combobox(self.config_tab,textvariable=var,values=['refund','loss'],state='readonly',width=22)
-            else: widget=ttk.Entry(self.config_tab,textvariable=var,width=25)
-            widget.grid(row=i,column=1,padx=15,pady=2)
-        ttk.Label(self.config_tab,text='Hipóteses de teste. Ajuste a largura à escala do ativo.\nMudanças valem somente para a próxima reprodução.\nO período de teste deve ficar reservado; não há otimização automática.',foreground='#ffcb76').grid(row=0,column=2,rowspan=6,padx=10,sticky='nw')
-        ttk.Button(self.config_tab,text='Salvar configurações',command=lambda:self.guard(self.save_config)).grid(row=16,column=1,pady=8)
+        from ds_trader.settings_ui import render_settings
+        self.vars={}
+        render_settings(self.config_tab, self.root, self.vars, self.store.config(),
+                        {**asdict(Parameters()), **asdict(Settings())}, LABELS,
+                        lambda: self.guard(self.save_config),
+                        self.screen_view, self.radar_view)
         helptext=tk.Text(self.help_tab,wrap='word',bg=PANEL,fg=TEXT,insertbackground=TEXT,relief='flat',font=('Segoe UI',10));helptext.pack(fill='both',expand=True);helptext.insert('1.0',HELP+'\nBanco: '+str(self.store.path));helptext.configure(state='disabled')
         self.refresh_saved();root.protocol('WM_DELETE_WINDOW',self.close)
 

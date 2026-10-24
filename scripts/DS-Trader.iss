@@ -1,6 +1,6 @@
 ; Compilar com Inno Setup 6 em Windows x64 (scripts/build.ps1)
-#define MyAppName "DS Trader"
-#define MyAppVersion "1.9.0"
+#define MyAppName "DS Trader AI"
+#define MyAppVersion "2.0.0"
 #define MyAppPublisher "DS Digital"
 #define MyAppExeName "DS-Trader.exe"
 
@@ -36,7 +36,7 @@ Source: "..\docs\ESTRATEGIA.md"; DestDir: "{app}\Documentacao"; Flags: ignorever
 Source: "..\docs\TESTES.md"; DestDir: "{app}\Documentacao"; Flags: ignoreversion
 
 [Icons]
-Name: "{userdesktop}\DS Trader"; Filename: "{app}\{#MyAppExeName}"; WorkingDir: "{app}"; Comment: "DS Trader — Análise e Simulação"
+Name: "{userdesktop}\DS Trader"; Filename: "{app}\{#MyAppExeName}"; WorkingDir: "{app}"; Comment: "DS Trader AI — Monitor inteligente de mercado"
 Name: "{autoprograms}\DS Trader"; Filename: "{app}\{#MyAppExeName}"; WorkingDir: "{app}"
 
 [Run]

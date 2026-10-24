@@ -71,10 +71,12 @@ def run():
             assert app.book.select() == str(app.live_tab), 'Tela ao vivo inacessivel'
             app.shell.go('radar')
             assert app.book.select() == str(app.radar_tab), 'Radar inacessivel'
+            app.shell.go('patterns')
+            assert app.book.select() == str(app.patterns_tab), 'Padroes IA inacessivel'
             app.shell.go('forex')
             assert app.book.select() == str(app.forex_tab), 'Forex inacessivel'
             assert app.screen_view is not None, 'Aba de monitoramento visual ausente'
-            assert app.screen_view.container.cget('bg') == '#0b1017', 'Tema escuro ausente'
+            assert app.screen_view.container.cget('bg') == '#061323', 'Tema escuro ausente'
             assert app.screen_view.next_opinion.get() == 'AGUARDAR', 'Sinal inicial inseguro'
             assert app.screen_view.visual_bias.get() == 'SEM VANTAGEM CLARA', (
                 'Cenario visual inicial precisa ser conservador')

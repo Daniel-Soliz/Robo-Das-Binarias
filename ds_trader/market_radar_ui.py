@@ -128,6 +128,7 @@ class RadarTab:
         self.status = tk.StringVar(value="SEM FONTE  ·  Radar desligado")
         self.coverage = tk.StringVar(value=f"0 recebidos · {len(DEFAULT_WATCHLIST)} não consultados")
         self.details = tk.StringVar(value="Selecione um ativo para ver evidências. Sem conexão, não há cotações.")
+        self.market_summary = tk.StringVar(value="0 atualizados · 0 altas · 0 baixas")
         self._after_id = None
         self._auto_start_id = None
         self._last_display_rows = ()
@@ -183,6 +184,13 @@ class RadarTab:
                  bg=PANEL, fg=MUTED, font=("Segoe UI", 9)).grid(
             row=2, column=0, columnspan=5, sticky="w", pady=(10, 0))
 
+        summary_card = tk.Frame(base, bg=PANEL_2, highlightbackground="#23516a",
+                                highlightthickness=1, padx=16, pady=10)
+        summary_card.pack(fill="x", pady=(0, 10))
+        tk.Label(summary_card, text="RADAR M5 · FONTES EXTERNAS", bg=PANEL_2,
+                 fg=ACCENT, font=("Segoe UI", 10, "bold")).pack(side="left")
+        tk.Label(summary_card, textvariable=self.market_summary, bg=PANEL_2,
+                 fg=TEXT, font=("Segoe UI", 10)).pack(side="right")
         table_card = tk.Frame(base, bg=PANEL, padx=12, pady=12,
                               highlightbackground="#2b3948", highlightthickness=1)
         table_card.pack(fill="both", expand=True)
@@ -224,6 +232,13 @@ class RadarTab:
 
     def _render(self):
         self._last_display_rows = self.model.rows()
+        if hasattr(self, "market_summary"):
+            rows = self._last_display_rows
+            fresh = [row for row in rows if row.status == "ATUALIZADO"]
+            up = sum(row.direction == "ALTA" for row in fresh)
+            down = sum(row.direction == "BAIXA" for row in fresh)
+            self.market_summary.set(f"{len(fresh)} atualizados · {up} altas · {down} baixas · "
+                                    f"{len(rows)-len(fresh)} sem cotação atual")
         selected = self.table.selection()
         previous = selected[0] if selected else None
         active = {row.symbol for row in self._last_display_rows}
