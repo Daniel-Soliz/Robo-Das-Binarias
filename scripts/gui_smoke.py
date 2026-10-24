@@ -33,11 +33,11 @@ def run():
             _checkpoint('apos root.update()')
             # Três atividades centrais visíveis, auxiliares no menu Ferramentas.
             assert app.shell.current == 'radar', 'Radar deve abrir primeiro'
-            assert len(app.shell.nav_buttons) == 3, 'Navegacao compacta incompleta'
+            assert len(app.shell.nav_buttons) == 5, 'Navegacao lateral incompleta'
             assert app.shell.nav_buttons['live'][0].master == app.shell.nav_buttons['radar'][0].master, (
                 'As tres abas principais devem estar alinhadas numa barra superior')
             assert app.shell.more_menu.index('end') == 5, 'Menu Ferramentas incompleto'
-            assert len(app.shell.nav_frames) == 9, 'Paginas auxiliares perdidas'
+            assert len(app.shell.nav_frames) == 10, 'Paginas auxiliares perdidas'
             # Public Kraken may auto-start after Tk's 900 ms timer. Either
             # scheduling or received public data is allowed, never fake quotes.
             assert app.radar_view.key.get() == '', 'Radar público não exige chave'
@@ -71,10 +71,12 @@ def run():
             assert app.book.select() == str(app.live_tab), 'Tela ao vivo inacessivel'
             app.shell.go('radar')
             assert app.book.select() == str(app.radar_tab), 'Radar inacessivel'
+            app.shell.go('patterns')
+            assert app.book.select() == str(app.patterns_tab), 'Padroes IA inacessivel'
             app.shell.go('forex')
             assert app.book.select() == str(app.forex_tab), 'Forex inacessivel'
             assert app.screen_view is not None, 'Aba de monitoramento visual ausente'
-            assert app.screen_view.container.cget('bg') == '#0b1017', 'Tema escuro ausente'
+            assert app.screen_view.container.cget('bg') == '#061323', 'Tema escuro ausente'
             assert app.screen_view.next_opinion.get() == 'AGUARDAR', 'Sinal inicial inseguro'
             assert app.screen_view.visual_bias.get() == 'SEM VANTAGEM CLARA', (
                 'Cenario visual inicial precisa ser conservador')

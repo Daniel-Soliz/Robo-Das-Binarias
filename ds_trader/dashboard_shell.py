@@ -7,11 +7,11 @@ import tkinter as tk
 from tkinter import ttk
 from ds_trader.theme import BG, PANEL, PANEL_2, TEXT, MUTED, ACCENT
 
-HEADER = "#111923"
+HEADER = "#07192b"
 BORDER = "#2b3948"
 BLUE = "#243b4b"
-GREEN = "#5cdbb0"
-AMBER = "#e9bd78"
+GREEN = "#14dfab"
+AMBER = "#ffd072"
 
 # Só as tarefas mais frequentes ficam sempre visíveis. As outras páginas
 # permanecem montadas, com seus estados preservados, no menu Ferramentas.
@@ -30,6 +30,11 @@ MORE_ITEMS = (
 )
 
 
+SIDEBAR_ITEMS = (("live", "▣", "Monitor"), ("radar", "◎", "Radar"),
+                 ("patterns", "✧", "Padrões IA"), ("events", "◷", "Histórico"),
+                 ("config", "⚙", "Configurações"))
+
+
 def label(parent, text, *, size=10, color=TEXT, bold=False, bg=None, **kwargs):
     return tk.Label(
         parent, text=text, bg=bg or parent.cget("bg"), fg=color,
@@ -42,16 +47,16 @@ class DashboardShell:
     def __init__(self, root, actions):
         self.root = root
         root.configure(bg=BG)
-        root.geometry("1280x790")
-        root.minsize(1020, 650)
-        root.grid_columnconfigure(0, weight=1)
+        root.geometry("1550x890")
+        root.minsize(1120, 680)
+        root.grid_columnconfigure(1, weight=1)
         root.grid_rowconfigure(1, weight=1)
 
         # Navegação principal numa única linha. O gráfico não perde largura
         # para uma barra lateral: os três destinos frequentes estão à vista.
         self.header = tk.Frame(root, bg=HEADER, height=76,
                                highlightbackground=BORDER, highlightthickness=1)
-        self.header.grid(row=0, column=0, sticky="ew")
+        self.header.grid(row=0, column=0, columnspan=2, sticky="ew")
         self.header.grid_propagate(False)
 
         brand = tk.Frame(self.header, bg=HEADER)
@@ -60,21 +65,25 @@ class DashboardShell:
                  font=("Segoe UI", 14, "bold"), padx=11, pady=8).pack(side="left", padx=(0, 12))
         brand_text = tk.Frame(brand, bg=HEADER)
         brand_text.pack(side="left")
-        label(brand_text, "Trader", size=16, bold=True, bg=HEADER).pack(anchor="w")
-        label(brand_text, "MONITOR INTELIGENTE", size=8,
+        label(brand_text, "DS Trader AI", size=16, bold=True, bg=HEADER).pack(anchor="w")
+        label(brand_text, "MONITOR INTELIGENTE DE MERCADO", size=8,
               color="#9aaebd", bg=HEADER, bold=True).pack(anchor="w", pady=(2, 0))
 
         self.nav_buttons = {}
         self.nav_frames = {}
         self.current = None
-        nav_bar = tk.Frame(self.header, bg="#1a2633", padx=4, pady=4)
-        nav_bar.pack(side="left", padx=(3, 0))
-        for name, symbol, title in NAV_ITEMS:
+        self.sidebar = tk.Frame(root, bg="#0a2034", width=190,
+                                highlightbackground=BORDER, highlightthickness=1)
+        self.sidebar.grid(row=1, column=0, sticky="nsew")
+        self.sidebar.grid_propagate(False)
+        nav_bar = tk.Frame(self.sidebar, bg="#0a2034", padx=4, pady=9)
+        nav_bar.pack(side="top", fill="x")
+        for name, symbol, title in SIDEBAR_ITEMS:
             item = tk.Frame(nav_bar, bg="#1a2633")
-            item.pack(side="left", padx=2)
+            item.pack(fill="x", padx=2, pady=3)
             border = tk.Frame(item, bg="#1a2633", height=2)
             button = tk.Button(
-                item, text=f"{symbol}  {title}", anchor="center",
+                item, text=f"{symbol}   {title}", anchor="w",
                 bg="#1a2633", fg="#bccbd7", relief="flat", bd=0,
                 highlightthickness=0, activebackground="#294353",
                 activeforeground=TEXT, cursor="hand2",
@@ -109,11 +118,11 @@ class DashboardShell:
         more.pack(side="right", padx=(0, 8))
 
         self.content = tk.Frame(root, bg=BG)
-        self.content.grid(row=1, column=0, sticky="nsew")
+        self.content.grid(row=1, column=1, sticky="nsew")
 
         self.footer = tk.Frame(root, bg=HEADER, height=32,
                                highlightthickness=1, highlightbackground=BORDER)
-        self.footer.grid(row=2, column=0, sticky="ew")
+        self.footer.grid(row=2, column=0, columnspan=2, sticky="ew")
         self.footer.grid_propagate(False)
         self.source = tk.StringVar(value="Fonte: dados não conectados")
         self.candles = tk.StringVar(value="Candles: aguardando")
@@ -124,6 +133,19 @@ class DashboardShell:
         label(self.footer, "", bg=HEADER, color="#e8be83",
               textvariable=self.connection, size=9).pack(
               side="right", padx=20, pady=5)
+
+    def bind_live(self, view):
+        """Cabeçalho apresenta o estado real do monitor; sem inventar feed."""
+        self.live_badge = label(self.header, "●  MONITOR DESLIGADO", size=9,
+                                color=AMBER, bg=HEADER, bold=True)
+        self.live_badge.pack(side="right", padx=(0, 15))
+        def refresh(*_):
+            active = bool(view.active)
+            self.live_badge.configure(text="●  MONITORAMENTO ATIVO" if active else
+                                      "●  MONITOR DESLIGADO",
+                                      fg=GREEN if active else AMBER)
+        view.status.trace_add("write", refresh)
+        refresh()
 
     def mount(self, notebook, frames):
         self.notebook = notebook
@@ -158,6 +180,7 @@ class DashboardShell:
             "forex": ("Fonte: Twelve Data", "Candles fechados: 1 / 5 / 15 min", "Forex por API (não IQ Option)"),
             "radar": ("Fonte: Twelve Data", "Ativos favoritos por API", "Radar Forex e cripto (somente leitura)"),
             "live": ("Fonte: captura de janela", "Pixels sem horário verificado", "Leitura visual experimental"),
+            "patterns": ("Fonte: captura visual", "Leituras heurísticas", "Padrões sem validação de preços"),
             "events": ("Fonte: simulações locais", "Eventos cronológicos", "Histórico e explicações"),
             "reports": ("Fonte: relatórios locais", "Testes históricos", "Resultados simulados"),
             "config": ("Fonte: configuração local", "Regras de estratégia", "Configurações"),
