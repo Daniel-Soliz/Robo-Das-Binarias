@@ -12,9 +12,12 @@ def test_all_ci_jobs_invoke_the_pytest_suite():
     assert requirements.exists()
     assert "pytest==" in requirements.read_text(encoding="utf-8")
     assert "python-dotenv==" in requirements.read_text(encoding="utf-8")
+    assert "opencv-python-headless==" in requirements.read_text(encoding="utf-8")
+    assert "numpy==" in requirements.read_text(encoding="utf-8")
     assert "pip install -r requirements-test.txt" in build
     assert "pip install -r requirements-test.txt" in ci
     assert "python -m pytest -q -rs" in build
     assert "python -m pytest -q -rs" in ci
     assert "python -m pytest -q -rs tests_ds" not in build
     assert "python -m pytest -q -rs tests_ds" not in ci
+    assert "os: [windows-2022]" in ci
