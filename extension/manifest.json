@@ -1,0 +1,15 @@
+{
+  "manifest_version": 3,
+  "name": "DS Trader — Painel",
+  "version": "0.1.0",
+  "description": "Painel experimental do DS Trader para análise visual. Não executa operações.",
+  "permissions": [
+    "activeTab",
+    "scripting"
+  ],
+  "action": {
+    "default_title": "Abrir DS Trader",
+    "default_popup": "popup.html"
+  },
+  "icons": {}
+}
