@@ -6,7 +6,8 @@ document.getElementById("open").addEventListener("click", async () => {
       status.textContent = "Abra uma página web compatível e tente novamente.";
       return;
     }
-    await chrome.scripting.executeScript({target:{tabId:tab.id},files:["content.js"]});
+    // O motor é carregado primeiro, mas só calcula quando receber OHLC válido.
+    await chrome.scripting.executeScript({target:{tabId:tab.id},files:["engine.js","content.js"]});
     status.textContent = "Painel solicitado. Confira a aba do gráfico.";
     window.close();
   } catch (e) {
