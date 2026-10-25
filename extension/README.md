@@ -1,7 +1,7 @@
 # DS Trader — extensão Chrome (protótipo)
 
 ## Estado atual
-Este é um protótipo de interface Manifest V3. O botão da extensão injeta um painel flutuante na aba web ativa. O painel ainda **não lê candles da IQ Option**, não calcula CALL/PUT e não mostra probabilidades de exemplo como se fossem reais.
+Este é um protótipo de interface Manifest V3. O botão da extensão injeta um painel flutuante na aba web ativa. O painel ainda **não lê candles da IQ Option**. Foi adicionado um motor técnico experimental separado (`engine.js`), que recebe candles OHLC fechados, valida a estrutura e calcula SMA 9, SMA 21 e RSI 14. Ele retorna uma hipótese técnica experimental, mas não calcula probabilidades nem tem integração com o gráfico ao vivo.
 
 ## Testar localmente
 1. Baixe esta pasta do repositório ou use o botão **Code → Download ZIP** e extraia o projeto.
@@ -10,6 +10,9 @@ Este é um protótipo de interface Manifest V3. O botão da extensão injeta um 
 4. Clique **Carregar sem compactação** e selecione a pasta `extension`.
 5. Abra a IQ Option Web, clique no ícone de extensões, escolha DS Trader e clique **Abrir painel**.
 6. Para fechar o painel, clique no ×.
+
+## Testes do motor
+Com Node.js instalado, execute `node extension/engine.test.js` na raiz do repositório para rodar os testes básicos do motor.
 
 ## Próximas etapas
 1. Validar visualmente os gráficos e limites dos termos da plataforma.
